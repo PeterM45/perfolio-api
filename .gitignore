@@ -11,3 +11,4 @@
 .env.*
 config.yaml
 /configs/config.yaml
+coverage.html
