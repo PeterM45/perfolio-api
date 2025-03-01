@@ -1,0 +1,15 @@
+CREATE TABLE IF NOT EXISTS widgets (
+    id VARCHAR(256) PRIMARY KEY,
+    user_id VARCHAR(256) NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
+    type VARCHAR(256) NOT NULL,
+    component VARCHAR(256) NOT NULL,
+    x INTEGER NOT NULL DEFAULT 0,
+    y INTEGER NOT NULL DEFAULT 0,
+    w INTEGER NOT NULL DEFAULT 1,
+    h INTEGER NOT NULL DEFAULT 1,
+    settings TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ
+);
+
+CREATE INDEX idx_widgets_user_id ON widgets(user_id);

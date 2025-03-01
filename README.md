@@ -1,10 +1,44 @@
 # Perfolio API
 
-Backend API service for Perfolio
+Backend API service for Perfolio - a professional networking platform with customizable profiles, posts, feeds, and connections.
 
 ## Overview
 
-Perfolio API
+Perfolio API is a high-performance Go backend designed to power a LinkedIn-like social network. It's built with scalability in mind, providing excellent cost-to-performance ratio for handling concurrent user operations.
+
+## Project Structure
+
+The codebase is organized using Clean Architecture principles:
+
+```
+perfolio-api/
+├── cmd/               # Application entry points
+│   └── api/           # API server
+├── configs/           # Configuration files
+├── internal/          # Private application code
+│   ├── user/          # User domain (Developer 1)
+│   │   ├── handler/   # HTTP handlers
+│   │   ├── service/   # Business logic
+│   │   └── repository/# Data access
+│   ├── content/       # Content domain (Developer 2)
+│   │   ├── handler/   # HTTP handlers
+│   │   ├── service/   # Business logic
+│   │   └── repository/# Data access
+│   ├── common/        # Shared code
+│   │   ├── config/    # Configuration
+│   │   ├── middleware/# HTTP middleware
+│   │   └── model/     # Domain models
+│   └── platform/      # Infrastructure
+│       ├── database/  # Database connections
+│       └── cache/     # Caching
+├── pkg/               # Public libraries
+│   ├── logger/        # Logging package
+│   ├── apperrors/     # Error handling
+│   └── validator/     # Request validation
+├── scripts/           # Scripts and migrations
+│   └── migrations/    # SQL migration files
+└── test/              # Test files
+```
 
 ## Features
 
@@ -13,27 +47,20 @@ Perfolio API
 - **Widget System**: Customizable profile layout with draggable widgets
 - **Concurrent Operations**: Optimized for high-volume user interactions
 
-## Tech Stack
-
-- **Language**: Go 1.22+
-- **Database**: PostgreSQL
-- **Authentication**: Clerk
-- **Frontend**: Next.js (separate repo)
-
-## Quick Start
+## Getting Started
 
 ### Prerequisites
 
 - Go 1.22+
-- Docker and Docker Compose
-- Make
+- PostgreSQL
+- Docker & Docker Compose (optional)
 
 ### Setup
 
 1. Clone the repository:
 
 ```bash
-git clone git@github.com:PeterM45/perfolio-api.git
+git clone https://github.com/PeterM45/perfolio-api.git
 cd perfolio-api
 ```
 
@@ -43,19 +70,21 @@ cd perfolio-api
 make setup
 ```
 
-3. Start the database:
+3. Configure the application by editing `configs/config.yaml`
+
+4. Start the database:
 
 ```bash
-docker-compose up -d
+make start-db
 ```
 
-4. Run database migrations:
+5. Run database migrations:
 
 ```bash
 make migrate-up
 ```
 
-5. Start the server with hot reload:
+6. Start the server with hot reload:
 
 ```bash
 make dev
@@ -63,26 +92,64 @@ make dev
 
 The API will be available at `http://localhost:8080`.
 
-## Project Structure
+## Development
 
+### Common Commands
+
+```bash
+# Run tests
+make test
+
+# Lint code
+make lint
+
+# Create a new migration
+make migrate-create name=my_migration
+
+# Build for production
+make build
 ```
-perfolio-api/
-├── cmd/               # Application entry points
-├── internal/          # Private application code
-│   ├── user/          # User domain (Developer 1)
-│   ├── content/       # Content domain (Developer 2)
-│   ├── common/        # Shared code
-│   └── platform/      # Infrastructure
-├── pkg/               # Public libraries
-├── scripts/           # Migration scripts and utilities
-├── docs/              # Detailed documentation
-└── test/              # Integration tests
+
+### API Documentation
+
+The API follows RESTful principles with these main endpoints:
+
+- `GET /api/v1/users/:id` - Get user profile
+- `PUT /api/v1/users/:id` - Update user profile
+- `GET /api/v1/users/search` - Search users
+- `POST /api/v1/users/:id/follow` - Follow/unfollow a user
+- `GET /api/v1/posts/:id` - Get a post
+- `POST /api/v1/posts` - Create a post
+- `GET /api/v1/posts/feed` - Get user feed
+- `GET /api/v1/widgets/user/:userId` - Get user widgets
+- `POST /api/v1/widgets` - Create a widget
+- `POST /api/v1/widgets/batch-update` - Update multiple widgets
+
+## Deployment
+
+### Docker
+
+Build and run the Docker container:
+
+```bash
+# Build the Docker image
+make docker-build
+
+# Run the Docker container
+make docker-run
 ```
 
-## Documentation
+### Environment Variables
 
-Detailed documentation is available in the `/docs` directory:
+The application can be configured using environment variables instead of the config file:
 
-- [Developer Guide](./docs/DEV_GUIDE.MD) - Comprehensive implementation guide
-- [Database Migrations](./docs/DB_MIGRATIONS.md) - Database schema and migrations
-- [Example Code](./docs/EXAMPLE_CODE.md) - Implementation examples for key features
+- `SERVER_PORT` - HTTP server port
+- `DATABASE_HOST` - PostgreSQL host
+- `DATABASE_PORT` - PostgreSQL port
+- `DATABASE_USER` - PostgreSQL user
+- `DATABASE_PASSWORD` - PostgreSQL password
+- `DATABASE_NAME` - PostgreSQL database name
+- `AUTH_CLERK_SECRET_KEY` - Clerk API secret key
+- `CACHE_TYPE` - Cache type (memory or redis)
+- `CACHE_REDIS_URL` - Redis URL (if using Redis cache)
+- `LOG_LEVEL` - Logging level (debug, info, warn, error)

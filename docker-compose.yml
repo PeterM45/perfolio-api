@@ -1,7 +1,7 @@
 version: '3.8'
 
 services:
-  # Postgres database
+  # PostgreSQL database
   postgres:
     image: postgres:16-alpine
     container_name: perfolio-postgres
@@ -18,22 +18,72 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
-    command: ['postgres', '-c', 'log_statement=all']
+    networks:
+      - perfolio-network
 
-  # Redis for caching (optional - disabled by default, enable when needed)
-  # redis:
-  #   image: redis:7-alpine
-  #   container_name: perfolio-redis
+  # Redis cache (optional)
+  redis:
+    image: redis:7-alpine
+    container_name: perfolio-redis
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - perfolio-network
+
+  # Perfolio API service
+  # Uncomment to run the API in Docker
+  # api:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile
+  #   container_name: perfolio-api
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #     redis:
+  #       condition: service_healthy
+  #   environment:
+  #     - SERVER_PORT=8080
+  #     - DATABASE_HOST=postgres
+  #     - DATABASE_PORT=5432
+  #     - DATABASE_USER=postgres
+  #     - DATABASE_PASSWORD=postgres
+  #     - DATABASE_NAME=perfolio
+  #     - DATABASE_SSL_MODE=disable
+  #     - CACHE_TYPE=redis
+  #     - CACHE_REDIS_URL=redis://redis:6379
+  #     - LOG_LEVEL=debug
   #   ports:
-  #     - "6379:6379"
-  #   volumes:
-  #     - redis_data:/data
-  #   healthcheck:
-  #     test: ["CMD", "redis-cli", "ping"]
-  #     interval: 5s
-  #     timeout: 5s
-  #     retries: 5
+  #     - "8080:8080"
+  #   networks:
+  #     - perfolio-network
+  #   restart: unless-stopped
+
+  # Database admin (optional)
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: perfolio-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@perfolio.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - '5050:80'
+    depends_on:
+      - postgres
+    networks:
+      - perfolio-network
 
 volumes:
   postgres_data:
   redis_data:
+
+networks:
+  perfolio-network:
+    driver: bridge

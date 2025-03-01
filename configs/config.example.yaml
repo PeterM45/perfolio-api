@@ -1,0 +1,42 @@
+# Perfolio API Example Configuration
+# Copy this file to config.yaml and modify as needed
+
+# HTTP Server Configuration
+server:
+  port: 8080 # Port the API server will listen on
+  read_timeout: 10s # Maximum duration for reading the request
+  write_timeout: 10s # Maximum duration for writing the response
+  idle_timeout: 60s # Maximum amount of time to wait for the next request
+
+# Database Configuration
+database:
+  host: localhost # Database host
+  port: 5432 # Database port
+  user: postgres # Database user
+  password: postgres # Database password (use environment variables in production)
+  name: perfolio # Database name
+  ssl_mode: disable # SSL mode (disable, require, verify-ca, verify-full)
+  max_open_conns: 25 # Maximum number of open connections
+  max_idle_conns: 10 # Maximum number of idle connections
+  conn_max_lifetime: 5m # Maximum lifetime of a connection
+
+# Authentication Configuration
+auth:
+  clerk_secret_key: '' # Get this from Clerk dashboard
+  jwt_secret: '' # Strong random string for JWT signing
+  token_expiry: 24h # JWT token expiry time
+
+# Cache Configuration
+cache:
+  type: memory # Cache type: memory or redis
+  redis_url: 'redis://localhost:6379' # Redis URL (used if type is redis)
+  default_ttl: 5m # Default time-to-live for cached items
+
+# Logging Configuration
+log_level: debug # Log level: debug, info, warn, error (use info or higher in production)
+
+# Optional Feature Flags
+features:
+  enable_webhooks: true # Enable webhook processing
+  enable_analytics: false # Enable analytics tracking
+  rate_limiting: true # Enable rate limiting

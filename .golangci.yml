@@ -1,0 +1,136 @@
+run:
+  # Timeout for analysis, e.g. 30s, 5m
+  timeout: 5m
+
+  # Define the Go version limit
+  go: '1.22'
+
+  # Skip any directories you don't want to analyze
+  skip-dirs:
+    - vendor
+    - tmp
+
+  # Control concurrency of the linter
+  concurrency: 4
+
+  # Skip specific files
+  skip-files:
+    - ".*\\.pb\\.go$"
+    - ".*\\.gen\\.go$"
+
+# Output configuration
+output:
+  # Make output more detailed
+  format: colored-line-number
+
+  # Print lines of code with issues
+  print-issued-lines: true
+
+  # Print linter name in the end of issue text
+  print-linter-name: true
+
+  # Sort results by file name, i.e., alphabetically
+  sort-results: true
+
+# Configure specific linters
+linters:
+  disable-all: true
+  enable:
+    - errcheck # Detect unchecked errors
+    - gosimple # Simplify code
+    - govet # Suspicious constructs
+    - ineffassign # Detect ineffectual assignments
+    - staticcheck # Static analysis checks
+    - typecheck # Like the front-end of a Go compiler
+    - unused # Unused constants, variables, functions and types
+    - gosec # Security checks
+    - goconst # Find repeated strings that could be constants
+    - goimports # Checks import statements are formatted according to the goimport tool
+    - misspell # Finds commonly misspelled English words
+    - revive # Drop-in replacement for golint
+    - gocyclo # Computes and checks the cyclomatic complexity of functions
+
+# Linter specific settings
+linters-settings:
+  errcheck:
+    # Report about not checking of errors in type assertions: `a := b.(MyStruct)`
+    check-type-assertions: true
+
+  goconst:
+    # Minimal length of string constant
+    min-len: 3
+    # Minimal occurrences count to trigger
+    min-occurrences: 3
+
+  gocyclo:
+    # Minimal code complexity to report
+    min-complexity: 15
+
+  gomnd:
+    settings:
+      mnd:
+        # List of function patterns to exclude from analysis
+        ignored-functions:
+          - .*\.Errorf
+          - .*\.Warnf
+          - .*\.Infof
+          - .*\.Debugf
+          - .*\.Printf
+
+  govet:
+    # Enable all analyzers
+    enable-all: true
+    # Disable analyzers by name
+    disable:
+      - fieldalignment # Too strict in many cases
+
+  revive:
+    # Maximum number of errors to be reported
+    max-issues-per-linter: 0
+    # Maximum number of errors for the same issue
+    max-same-issues: 0
+    # Rule configuration
+    rules:
+      - name: exported
+        severity: warning
+        disabled: false
+        arguments:
+          - 'checkPrivateReceivers'
+          - 'sayRepetitiveInsteadOfStutters'
+
+  staticcheck:
+    # Select specific checks or groups
+    checks: ['all']
+
+  unused:
+    # Select specific checks
+    check-exported: false
+
+issues:
+  # Maximum count of issues with the same text
+  max-same-issues: 10
+
+  # Maximum issues count per one linter
+  max-issues-per-linter: 100
+
+  # Fix found issues
+  fix: false
+
+  # Exclude specific issues
+  exclude-rules:
+    # Exclude certain linters from running on tests files.
+    - path: _test\.go
+      linters:
+        - gocyclo
+        - gosec
+        - gomnd
+
+    # Exclude known false positives
+    - text: 'G404: Use of weak random number generator'
+      linters:
+        - gosec
+
+    # Don't require error checks on Close calls
+    - text: 'Error return value of .((os.)?std(out|err).Close|.*Close|.*Flush|.*Write|.*Print) is not checked'
+      linters:
+        - errcheck

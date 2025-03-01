@@ -1,0 +1,56 @@
+# .air.toml for hot reloading during development
+root = "."
+tmp_dir = "tmp"
+
+[build]
+# Binary file yields from `cmd`.
+bin = "./tmp/perfolio-api"
+# Command to execute when building the application
+cmd = "go build -o ./tmp/perfolio-api cmd/api/main.go"
+# Customize binary, can setup environment variables or arguments.
+full_bin = "./tmp/perfolio-api"
+# Watch these file extensions
+include_ext = ["go", "yaml", "yml"]
+# Watch these directories for changes
+include_dir = ["cmd", "internal", "pkg", "configs"]
+# Exclude directories from being watched
+exclude_dir = ["tmp", "vendor", ".git", "test"]
+# Exclude files from being watched
+exclude_file = []
+# Exclude specific regular expressions
+exclude_regex = ["_test\\.go"]
+# Exclude unchanged files
+exclude_unchanged = true
+# Follow symlink for directories
+follow_symlink = true
+# This log file places in your tmp_dir
+log = "air.log"
+# Poll files for changes instead of using fsnotify
+poll = false
+# Poll interval (in milliseconds)
+poll_interval = 500
+# Stop running old binary when build errors occur
+stop_on_error = true
+# Send interrupt signal before killing process
+send_interrupt = false
+# Delay after sending interrupt signal (in milliseconds)
+kill_delay = 500
+# Add additional arguments when running binary
+args_bin = []
+
+[log]
+# Show log time
+time = true
+# Only color the main parts of the log
+main_only = false
+
+[color]
+# Customize each part's color
+main = "magenta"
+watcher = "cyan"
+build = "yellow"
+runner = "green"
+
+[misc]
+# Delete tmp directory on exit
+clean_on_exit = true
