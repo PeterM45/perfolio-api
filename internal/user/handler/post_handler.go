@@ -6,7 +6,7 @@ import (
 	"strconv"
 
 	"github.com/PeterM45/perfolio-api/internal/common/model"
-	"github.com/PeterM45/perfolio-api/internal/content/service"
+	"github.com/PeterM45/perfolio-api/internal/user/service"
 	"github.com/PeterM45/perfolio-api/pkg/apperrors"
 	"github.com/PeterM45/perfolio-api/pkg/logger"
 	"github.com/gin-gonic/gin"
@@ -194,21 +194,23 @@ func (h *PostHandler) handleError(c *gin.Context, err error) {
 	var appErr *apperrors.Error
 	if errors.As(err, &appErr) {
 		switch appErr.Type() {
-		case apperrors.NotFound:
+		case apperrors.ErrTypeNotFound:
 			c.JSON(http.StatusNotFound, gin.H{"error": appErr.Error()})
-		case apperrors.BadRequest:
+		case apperrors.ErrTypeBadRequest:
 			c.JSON(http.StatusBadRequest, gin.H{"error": appErr.Error()})
-		case apperrors.Unauthorized:
+		case apperrors.ErrTypeUnauthorized:
 			c.JSON(http.StatusUnauthorized, gin.H{"error": appErr.Error()})
-		case apperrors.Forbidden:
+		case apperrors.ErrTypeForbidden:
 			c.JSON(http.StatusForbidden, gin.H{"error": appErr.Error()})
+		case apperrors.ErrTypeConflict:
+			c.JSON(http.StatusConflict, gin.H{"error": appErr.Error()})
 		default:
-			h.logger.Error().Err(err).Msg("Internal server error")
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
 		}
 		return
 	}
 
+	// If not an AppError, treat as internal server error
 	h.logger.Error().Err(err).Msg("Internal server error")
-	c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+	c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
 }

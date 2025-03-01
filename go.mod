@@ -1,22 +1,23 @@
 module github.com/PeterM45/perfolio-api
 
-go 1.22
+go 1.23
 
 require (
 	github.com/gin-contrib/cors v1.5.0
 	github.com/gin-gonic/gin v1.9.1
 	github.com/go-playground/validator/v10 v10.15.5
+	github.com/go-redis/redis/v8 v8.11.5
 	github.com/golang-jwt/jwt/v5 v5.0.0
 	github.com/google/uuid v1.4.0
 	github.com/jackc/pgx/v5 v5.5.0
-	github.com/redis/go-redis/v9 v9.3.0
 	github.com/rs/zerolog v1.31.0
 	github.com/spf13/viper v1.17.0
+
 )
 
 require (
 	github.com/bytedance/sonic v1.10.2 // indirect
-	github.com/cespare/xxhash/v2 v2.2.0 // indirect
+	github.com/cespare/xxhash/v2 v2.1.2 // indirect
 	github.com/chenzhuoyu/base64x v0.0.0-20230717121745-296ad89f973d // indirect
 	github.com/chenzhuoyu/iasm v0.9.0 // indirect
 	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect

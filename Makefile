@@ -42,9 +42,14 @@ test:
 lint:
 	golangci-lint run
 
-# Database migrations - up all versions
-migrate-up:
+create-db:
+	@echo "Creating database $(DB_NAME) if it doesn't exist..."
+	@PGPASSWORD=$(DB_PASSWORD) psql -h $(DB_HOST) -p $(DB_PORT) -U $(DB_USER) -tc "SELECT 1 FROM pg_database WHERE datname = '$(DB_NAME)'" | grep -q 1 || PGPASSWORD=$(DB_PASSWORD) psql -h $(DB_HOST) -p $(DB_PORT) -U $(DB_USER) -c "CREATE DATABASE $(DB_NAME);"
+
+# Update migrate-up to depend on create-db
+migrate-up: create-db
 	migrate -path $(MIGRATION_PATH) -database "postgres://$(DB_USER):$(DB_PASSWORD)@$(DB_HOST):$(DB_PORT)/$(DB_NAME)?sslmode=disable" up
+
 
 # Database migrations - down one version
 migrate-down:
@@ -81,5 +86,5 @@ start-db:
 generate-mocks:
 	mockgen -destination=test/mocks/user_repository.go -package=mocks github.com/PeterM45/perfolio-api/internal/user/repository UserRepository
 	mockgen -destination=test/mocks/user_service.go -package=mocks github.com/PeterM45/perfolio-api/internal/user/service UserService
-	mockgen -destination=test/mocks/content_repository.go -package=mocks github.com/PeterM45/perfolio-api/internal/content/repository PostRepository,WidgetRepository
-	mockgen -destination=test/mocks/content_service.go -package=mocks github.com/PeterM45/perfolio-api/internal/content/service PostService,WidgetService
+	mockgen -destination=test/mocks/content_repository.go -package=mocks github.com/PeterM45/perfolio-api/internal/user/repository PostRepository,WidgetRepository
+	mockgen -destination=test/mocks/content_service.go -package=mocks github.com/PeterM45/perfolio-api/internal/user/service PostService,WidgetService

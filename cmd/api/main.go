@@ -9,22 +9,21 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/PeterM45/perfolio-api/cmd/api/app"
+	app "github.com/PeterM45/perfolio-api/cmd/api/app"
 	"github.com/PeterM45/perfolio-api/internal/common/config"
 	"github.com/PeterM45/perfolio-api/pkg/logger"
 )
 
 func main() {
 	// Parse command line flags
-	configFile := flag.String("config", "./configs/config.yaml", "Path to config file")
+	// configFile := flag.String("config", "./configs/config.yaml", "Path to config file")
 	flag.Parse()
 
 	// Initialize logger
-	log := logger.NewZapLogger("info")
-	defer log.Sync()
+	log := logger.NewLogger("info")
 
 	// Load configuration
-	cfg, err := config.Load(*configFile)
+	cfg, err := config.Load()
 	if err != nil {
 		log.Fatal().Err(err).Msg("Failed to load configuration")
 	}
@@ -47,7 +46,6 @@ func main() {
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	s := <-quit
-
 	log.Info().Str("signal", s.String()).Msg("Shutting down server...")
 
 	// Create context with timeout for shutdown

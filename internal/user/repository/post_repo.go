@@ -119,7 +119,7 @@ func (r *postRepository) GetByID(ctx context.Context, id string) (*model.Post, e
 
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, apperrors.NotFound("post", id)
+			return nil, apperrors.NotFound(fmt.Sprintf("post: %s", id))
 		}
 		return nil, fmt.Errorf("query post: %w", err)
 	}
@@ -198,7 +198,7 @@ func (r *postRepository) Update(ctx context.Context, post *model.Post) error {
 
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return apperrors.NotFound("post", post.ID)
+			return apperrors.NotFound(fmt.Sprintf("post: %s", post.ID))
 		}
 		return fmt.Errorf("update post: %w", err)
 	}
@@ -215,7 +215,7 @@ func (r *postRepository) Delete(ctx context.Context, id string) error {
 
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return apperrors.NotFound("post", id)
+			return apperrors.NotFound(fmt.Sprintf("post: %s", id))
 		}
 		return fmt.Errorf("delete post: %w", err)
 	}

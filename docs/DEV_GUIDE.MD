@@ -25,12 +25,9 @@ perfolio-api/
 │   │   ├── handler/   # HTTP handlers
 │   │   ├── service/   # Business logic
 │   │   └── repository/# Data access
-│   ├── content/       # Content domain
-│   │   ├── handler/   # HTTP handlers
-│   │   ├── service/   # Business logic
-│   │   └── repository/# Data access
 │   ├── common/        # Shared code
 │   │   ├── config/    # Configuration
+│   │   ├── interfaces/# Service interfaces
 │   │   ├── middleware/# HTTP middleware
 │   │   └── model/     # Domain models
 │   └── platform/      # Infrastructure
@@ -45,11 +42,11 @@ perfolio-api/
 └── test/              # Test files
 ```
 
-## Domain Separation
+## Domain Organization
 
-The codebase is organized into two primary domains to enable parallel development:
+The codebase is organized by domain, allowing for focused development:
 
-### User Domain (Developer 1)
+### User Domain
 
 | Component  | Location                                | Responsibility       |
 | ---------- | --------------------------------------- | -------------------- |
@@ -63,21 +60,7 @@ Handles:
 - User authentication and profiles
 - Connection/follow relationships
 - Profile data management
-
-### Content Domain (Developer 2)
-
-| Component  | Location                                                      | Responsibility          |
-| ---------- | ------------------------------------------------------------- | ----------------------- |
-| Models     | `internal/common/model/post.go, widget.go`                    | Content entities & DTOs |
-| Repository | `internal/content/repository/post_repo.go, widget_repo.go`    | Database operations     |
-| Service    | `internal/content/service/post_service.go, widget_service.go` | Business logic          |
-| Handler    | `internal/content/handler/post_handler.go, widget_handler.go` | HTTP endpoints          |
-
-Handles:
-
-- Posts and feed generation
-- Content reactions
-- Profile widgets and layout
+- Posts, widgets, and content (currently in user domain)
 
 ## Getting Started
 
@@ -114,9 +97,10 @@ make setup
 make start-db
 ```
 
-5. Run database migrations:
+5. Create the database and run migrations:
 
 ```bash
+make create-db
 make migrate-up
 ```
 
@@ -174,7 +158,7 @@ type SavePostRequest struct {
 2. **Add repository method**:
 
 ```go
-// internal/content/repository/post_repo.go
+// internal/user/repository/post_repo.go
 func (r *postRepository) SavePost(ctx context.Context, userID, postID string) error {
     query := `
         INSERT INTO saved_posts (user_id, post_id, created_at)
@@ -194,7 +178,7 @@ func (r *postRepository) SavePost(ctx context.Context, userID, postID string) er
 3. **Implement service method**:
 
 ```go
-// internal/content/service/post_service.go
+// internal/user/service/post_service.go
 func (s *postService) SavePost(ctx context.Context, userID string, req *model.SavePostRequest) error {
     // Validate request
     if err := s.validator.Validate(req); err != nil {
@@ -214,7 +198,7 @@ func (s *postService) SavePost(ctx context.Context, userID string, req *model.Sa
 4. **Create handler method**:
 
 ```go
-// internal/content/handler/post_handler.go
+// internal/user/handler/post_handler.go
 func (h *PostHandler) SavePost(c *gin.Context) {
     // Get authenticated user
     userID, exists := c.Get("userID")
@@ -247,14 +231,8 @@ func (h *PostHandler) SavePost(c *gin.Context) {
 5. **Register the route**:
 
 ```go
-// internal/content/handler/post_handler.go (in RegisterRoutes method)
-func (h *PostHandler) RegisterRoutes(router *gin.RouterGroup) {
-    posts := router.Group("/posts")
-    {
-        // Existing routes...
-        posts.POST("/save", h.SavePost)
-    }
-}
+// cmd/api/app/router.go (in router setup)
+posts.POST("/save", authMiddleware.Authenticate(), postHandler.SavePost)
 ```
 
 ## Error Handling
@@ -264,7 +242,7 @@ Always use the custom error types from `pkg/apperrors` for consistent error resp
 ```go
 // Return application-specific errors
 if user == nil {
-    return nil, apperrors.NotFound("user", id)
+    return nil, apperrors.NotFound("user not found with ID: " + id)
 }
 
 if !authorized {
@@ -276,7 +254,27 @@ if !valid {
 }
 ```
 
-In handlers, use the `handleError` helper to convert application errors to appropriate HTTP responses.
+In handlers, use the `handleError` helper to convert application errors to appropriate HTTP responses:
+
+```go
+func (h *PostHandler) handleError(c *gin.Context, err error) {
+    var appErr *apperrors.Error
+    if errors.As(err, &appErr) {
+        switch appErr.Type() {
+        case apperrors.ErrTypeNotFound:
+            c.JSON(http.StatusNotFound, gin.H{"error": appErr.Error()})
+        case apperrors.ErrTypeBadRequest:
+            c.JSON(http.StatusBadRequest, gin.H{"error": appErr.Error()})
+        // ... other error types
+        }
+        return
+    }
+
+    // Default to internal server error
+    h.logger.Error().Err(err).Msg("Internal server error")
+    c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
+}
+```
 
 ## Database Operations
 
@@ -291,9 +289,9 @@ if err != nil {
 }
 
 // Configure connection pool
-db.SetMaxOpenConns(25)
-db.SetMaxIdleConns(10)
-db.SetConnMaxLifetime(5 * time.Minute)
+db.SetMaxOpenConns(cfg.MaxOpenConns)
+db.SetMaxIdleConns(cfg.MaxIdleConns)
+db.SetConnMaxLifetime(cfg.ConnMaxLifetime)
 ```
 
 ### Migrations
@@ -317,7 +315,7 @@ The application uses a tiered caching approach:
 
 1. **In-Memory Cache**: Default for development and small deployments
 
-   - Implementation: `internal/platform/cache/cache.go`
+   - Implementation: `internal/platform/cache/memory.go`
    - Automatic cleanup of expired items
 
 2. **Redis Cache**: For production or larger deployments
@@ -375,7 +373,7 @@ func TestUserService_GetUserByID(t *testing.T) {
     mockCache.On("Set", "user:user123", mock.Anything, mock.Anything).Return()
 
     // Create service with mocks
-    service := NewUserService(mockRepo, mockCache, logger.NewZapLogger("test"))
+    service := NewUserService(mockRepo, mockCache, logger.NewLogger("test"))
 
     // Call method and assert
     user, err := service.GetUserByID(context.Background(), "user123")
@@ -399,7 +397,7 @@ func TestUserHandler_GetUserByID(t *testing.T) {
     mockService.On("GetUserByID", mock.Anything, "user123").Return(&model.User{ID: "user123"}, nil)
 
     // Create handler with mock
-    handler := NewUserHandler(mockService, logger.NewZapLogger("test"))
+    handler := NewUserHandler(mockService, logger.NewLogger("test"))
 
     // Setup router
     router := gin.New()
@@ -519,15 +517,17 @@ If you encounter database connection problems:
 
 1. Verify PostgreSQL is running: `docker ps`
 2. Check connection details in config file
-3. Ensure migrations have been applied: `make migrate-up`
+3. Create the database if it doesn't exist: `make create-db`
+4. Ensure migrations have been applied: `make migrate-up`
 
-### Authentication Problems
+### Package Organization Issues
 
-If authentication is failing:
+If you encounter import cycle errors:
 
-1. Verify Clerk secret key in configuration
-2. Check JWT token format in Authorization header
-3. Ensure token hasn't expired
+1. Use interfaces in common packages instead of direct imports
+2. Make sure all files in a directory belong to the same package
+3. Keep application entry points (`main.go`) in the main package
+4. Move application setup into a separate `app` package
 
 ### Hot Reload Not Working
 
@@ -535,7 +535,8 @@ If changes aren't being detected:
 
 1. Check if the file is excluded in `.air.toml`
 2. Verify Air is running properly
-3. Try restarting the Air process: `make dev`
+3. Ensure your Go PATH includes the Air binary
+4. Try restarting the Air process: `make dev`
 
 ## API Routes Reference
 
@@ -553,4 +554,5 @@ If changes aren't being detected:
 | GET    | /api/v1/widgets/user/:userId | Get user widgets        | No            |
 | POST   | /api/v1/widgets              | Create a widget         | Yes           |
 | PUT    | /api/v1/widgets/:id          | Update a widget         | Yes           |
+| DELETE | /api/v1/widgets/:id          | Delete a widget         | Yes           |
 | POST   | /api/v1/widgets/batch-update | Update multiple widgets | Yes           |

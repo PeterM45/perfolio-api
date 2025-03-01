@@ -76,7 +76,7 @@ func (r *userRepository) GetByID(ctx context.Context, id string) (*model.User, e
 
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, apperrors.NotFound("user", id)
+			return nil, apperrors.NotFound(fmt.Sprintf("user: %s", id))
 		}
 		return nil, fmt.Errorf("query user: %w", err)
 	}
@@ -136,7 +136,7 @@ func (r *userRepository) GetByUsername(ctx context.Context, username string) (*m
 
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, apperrors.NotFound("user by username", username)
+			return nil, apperrors.NotFound(fmt.Sprintf("user by username: %s", username))
 		}
 		return nil, fmt.Errorf("query user by username: %w", err)
 	}
@@ -196,7 +196,7 @@ func (r *userRepository) GetByEmail(ctx context.Context, email string) (*model.U
 
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, apperrors.NotFound("user by email", email)
+			return nil, apperrors.NotFound(fmt.Sprintf("user by email: %s", email))
 		}
 		return nil, fmt.Errorf("query user by email: %w", err)
 	}
@@ -317,7 +317,7 @@ func (r *userRepository) Update(ctx context.Context, id string, updates map[stri
 	var returnedID string
 	if err := row.Scan(&returnedID); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return apperrors.NotFound("user", id)
+			return apperrors.NotFound(fmt.Sprintf("user: %s", id))
 		}
 		return fmt.Errorf("update user: %w", err)
 	}
@@ -418,7 +418,7 @@ func (r *userRepository) AddFollow(ctx context.Context, followerID, followingID 
 			return err
 		}
 		if !exists {
-			return apperrors.NotFound("user", id)
+			return apperrors.NotFound(fmt.Sprintf("user: %s", id))
 		}
 	}
 

@@ -1,29 +1,27 @@
 package apperrors
 
-import "fmt"
-
-// ErrorType defines the type of error
-type ErrorType string
-
-const (
-	// BadRequest indicates a client error
-	BadRequest ErrorType = "BAD_REQUEST"
-	// NotFound indicates a resource was not found
-	NotFound ErrorType = "NOT_FOUND"
-	// Unauthorized indicates authentication is required
-	Unauthorized ErrorType = "UNAUTHORIZED"
-	// Forbidden indicates the user doesn't have permission
-	Forbidden ErrorType = "FORBIDDEN"
-	// Conflict indicates a resource conflict
-	Conflict ErrorType = "CONFLICT"
-	// InternalError indicates a server error
-	InternalError ErrorType = "INTERNAL_ERROR"
+import (
+	"fmt"
+	"net/http"
 )
 
-// Error is a custom application error
+// ErrorType represents the type of error
+type ErrorType string
+
+// Error types - using different names than the function constructors
+const (
+	ErrTypeBadRequest   ErrorType = "BAD_REQUEST"
+	ErrTypeNotFound     ErrorType = "NOT_FOUND"
+	ErrTypeUnauthorized ErrorType = "UNAUTHORIZED"
+	ErrTypeForbidden    ErrorType = "FORBIDDEN"
+	ErrTypeConflict     ErrorType = "CONFLICT"
+	ErrTypeInternal     ErrorType = "INTERNAL"
+)
+
+// Error represents an application error
 type Error struct {
-	errType ErrorType
-	message string
+	errorType ErrorType
+	message   string
 }
 
 // Error returns the error message
@@ -33,43 +31,79 @@ func (e *Error) Error() string {
 
 // Type returns the error type
 func (e *Error) Type() ErrorType {
-	return e.errType
+	return e.errorType
 }
 
-// NewError creates a new Error
-func NewError(errType ErrorType, message string) *Error {
-	return &Error{
-		errType: errType,
-		message: message,
+// Status returns the HTTP status code
+func (e *Error) Status() int {
+	switch e.errorType {
+	case ErrTypeBadRequest:
+		return http.StatusBadRequest
+	case ErrTypeNotFound:
+		return http.StatusNotFound
+	case ErrTypeUnauthorized:
+		return http.StatusUnauthorized
+	case ErrTypeForbidden:
+		return http.StatusForbidden
+	case ErrTypeConflict:
+		return http.StatusConflict
+	default:
+		return http.StatusInternalServerError
 	}
 }
 
-// BadRequest creates a bad request error
+// Error factory functions
 func BadRequest(message string) *Error {
-	return NewError(BadRequest, message)
+	return &Error{
+		errorType: ErrTypeBadRequest,
+		message:   message,
+	}
 }
 
-// NotFound creates a not found error
-func NotFound(resource, id string) *Error {
-	return NewError(NotFound, fmt.Sprintf("%s with ID %s not found", resource, id))
+func NotFound(message string) *Error {
+	return &Error{
+		errorType: ErrTypeNotFound,
+		message:   message,
+	}
 }
 
-// Unauthorized creates an unauthorized error
 func Unauthorized(message string) *Error {
-	return NewError(Unauthorized, message)
+	return &Error{
+		errorType: ErrTypeUnauthorized,
+		message:   message,
+	}
 }
 
-// Forbidden creates a forbidden error
 func Forbidden(message string) *Error {
-	return NewError(Forbidden, message)
+	return &Error{
+		errorType: ErrTypeForbidden,
+		message:   message,
+	}
 }
 
-// Conflict creates a conflict error
 func Conflict(message string) *Error {
-	return NewError(Conflict, message)
+	return &Error{
+		errorType: ErrTypeConflict,
+		message:   message,
+	}
 }
 
-// Internal creates an internal error
-func Internal(message string) *Error {
-	return NewError(InternalError, message)
+func InternalError(message string) *Error {
+	return &Error{
+		errorType: ErrTypeInternal,
+		message:   message,
+	}
+}
+
+// Wrap wraps an error with a new error type
+func Wrap(err error, errorType ErrorType, message string) *Error {
+	if message == "" {
+		message = err.Error()
+	} else {
+		message = fmt.Sprintf("%s: %s", message, err.Error())
+	}
+	return &Error{
+		errorType: errorType,
+		message:   message,
+	}
 }

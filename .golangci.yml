@@ -3,7 +3,7 @@ run:
   timeout: 5m
 
   # Define the Go version limit
-  go: '1.22'
+  go: '1.23'
 
   # Skip any directories you don't want to analyze
   skip-dirs:

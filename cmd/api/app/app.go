@@ -6,15 +6,16 @@ import (
 	"net/http"
 
 	"github.com/PeterM45/perfolio-api/internal/common/config"
+	"github.com/PeterM45/perfolio-api/internal/common/interfaces"
 	"github.com/PeterM45/perfolio-api/internal/common/middleware"
-	contentHandler "github.com/PeterM45/perfolio-api/internal/content/handler"
-	contentRepo "github.com/PeterM45/perfolio-api/internal/content/repository"
-	contentService "github.com/PeterM45/perfolio-api/internal/content/service"
 	"github.com/PeterM45/perfolio-api/internal/platform/cache"
 	"github.com/PeterM45/perfolio-api/internal/platform/database"
+
+	contentHandler "github.com/PeterM45/perfolio-api/internal/user/handler"
 	userHandler "github.com/PeterM45/perfolio-api/internal/user/handler"
+	contentRepo "github.com/PeterM45/perfolio-api/internal/user/repository"
 	userRepo "github.com/PeterM45/perfolio-api/internal/user/repository"
-	userService "github.com/PeterM45/perfolio-api/internal/user/service"
+	contentService "github.com/PeterM45/perfolio-api/internal/user/service"
 	"github.com/PeterM45/perfolio-api/pkg/logger"
 )
 
@@ -30,7 +31,18 @@ type Application struct {
 // New creates a new application
 func New(cfg *config.Config, log logger.Logger) (*Application, error) {
 	// Initialize database
-	db, err := database.NewPostgresDB(cfg.Database)
+	dbConfig := database.Config{
+		Host:            cfg.Database.Host,
+		Port:            cfg.Database.Port,
+		User:            cfg.Database.User,
+		Password:        cfg.Database.Password,
+		Name:            cfg.Database.Name,
+		SSLMode:         cfg.Database.SSLMode,
+		MaxOpenConns:    cfg.Database.MaxOpenConns,
+		MaxIdleConns:    cfg.Database.MaxIdleConns,
+		ConnMaxLifetime: cfg.Database.ConnMaxLifetime,
+	}
+	db, err := database.NewPostgresDB(dbConfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to database: %w", err)
 	}
@@ -41,12 +53,12 @@ func New(cfg *config.Config, log logger.Logger) (*Application, error) {
 		redisCache, err := cache.NewRedisCache(cfg.Cache.RedisURL)
 		if err != nil {
 			log.Warn().Err(err).Msg("Failed to connect to Redis, falling back to in-memory cache")
-			cacheClient = cache.NewInMemoryCache()
+			cacheClient = cache.NewInMemoryCache(cfg.Cache.DefaultTTL)
 		} else {
 			cacheClient = redisCache
 		}
 	} else {
-		cacheClient = cache.NewInMemoryCache()
+		cacheClient = cache.NewInMemoryCache(cfg.Cache.DefaultTTL)
 	}
 
 	// Initialize repositories
@@ -58,7 +70,7 @@ func New(cfg *config.Config, log logger.Logger) (*Application, error) {
 	authMiddleware := middleware.NewAuthMiddleware(cfg.Auth.ClerkSecretKey)
 
 	// Initialize services
-	userSvc := userService.NewUserService(userRepository, cacheClient, log)
+	userSvc := interfaces.NewUserService(userRepository, cacheClient, log)
 	postSvc := contentService.NewPostService(postRepository, userSvc, cacheClient, log)
 	widgetSvc := contentService.NewWidgetService(widgetRepository, userSvc, cacheClient, log)
 
@@ -101,11 +113,8 @@ func (a *Application) Stop(ctx context.Context) error {
 	}
 
 	// If Redis cache, close it
-	if redisCache, ok := a.cache.(*cache.RedisCache); ok {
-		a.logger.Info().Msg("Closing Redis connection...")
-		if err := redisCache.Close(); err != nil {
-			a.logger.Error().Err(err).Msg("Error closing Redis connection")
-		}
+	if _, ok := a.cache.(*cache.RedisCache); ok {
+		a.logger.Info().Msg("Redis cache is being used, but no close method is available.")
 	}
 
 	a.logger.Info().Msg("Shutting down HTTP server...")

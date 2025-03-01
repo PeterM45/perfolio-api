@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"github.com/PeterM45/perfolio-api/internal/common/middleware"
-	contentHandler "github.com/PeterM45/perfolio-api/internal/content/handler"
+	contentHandler "github.com/PeterM45/perfolio-api/internal/user/handler"
 	userHandler "github.com/PeterM45/perfolio-api/internal/user/handler"
 	"github.com/PeterM45/perfolio-api/pkg/logger"
 	"github.com/gin-contrib/cors"

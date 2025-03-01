@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/PeterM45/perfolio-api/internal/common/interfaces"
 	"github.com/PeterM45/perfolio-api/internal/common/model"
-	"github.com/PeterM45/perfolio-api/internal/content/repository"
 	"github.com/PeterM45/perfolio-api/internal/platform/cache"
-	userService "github.com/PeterM45/perfolio-api/internal/user/service"
+	"github.com/PeterM45/perfolio-api/internal/user/repository"
 	"github.com/PeterM45/perfolio-api/pkg/apperrors"
 	"github.com/PeterM45/perfolio-api/pkg/logger"
 	"github.com/PeterM45/perfolio-api/pkg/validator"
@@ -27,7 +27,7 @@ type PostService interface {
 
 type postService struct {
 	repo        repository.PostRepository
-	userService userService.UserService
+	userService interfaces.UserService
 	cache       cache.Cache
 	validator   validator.Validator
 	logger      logger.Logger
@@ -36,7 +36,7 @@ type postService struct {
 // NewPostService creates a new PostService
 func NewPostService(
 	repo repository.PostRepository,
-	userService userService.UserService,
+	userService interfaces.UserService,
 	cache cache.Cache,
 	logger logger.Logger,
 ) PostService {

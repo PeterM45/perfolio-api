@@ -61,7 +61,7 @@ func (r *widgetRepository) GetByID(ctx context.Context, id string) (*model.Widge
 
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, apperrors.NotFound("widget", id)
+			return nil, apperrors.NotFound(fmt.Sprintf("widget with ID %s", id))
 		}
 		return nil, fmt.Errorf("query widget: %w", err)
 	}
@@ -203,7 +203,7 @@ func (r *widgetRepository) Update(ctx context.Context, widget *model.Widget) err
 
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return apperrors.NotFound("widget", widget.ID)
+			return apperrors.NotFound(fmt.Sprintf("widget: %s", widget.ID))
 		}
 		return fmt.Errorf("update widget: %w", err)
 	}
@@ -220,7 +220,7 @@ func (r *widgetRepository) Delete(ctx context.Context, id string) error {
 
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return apperrors.NotFound("widget", id)
+			return apperrors.NotFound(fmt.Sprintf("widget: %s", id))
 		}
 		return fmt.Errorf("delete widget: %w", err)
 	}
@@ -264,7 +264,7 @@ func (r *widgetRepository) BatchUpdatePositions(ctx context.Context, updates []*
 
 		if err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
-				return apperrors.NotFound("widget", update.ID)
+				return apperrors.NotFound(fmt.Sprintf("widget: %s", update.ID))
 			}
 			return fmt.Errorf("update widget position: %w", err)
 		}

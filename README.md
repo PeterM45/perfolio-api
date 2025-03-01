@@ -14,18 +14,17 @@ The codebase is organized using Clean Architecture principles:
 perfolio-api/
 ├── cmd/               # Application entry points
 │   └── api/           # API server
+│       ├── app/       # Application setup
+│       └── main.go    # Main entry point
 ├── configs/           # Configuration files
 ├── internal/          # Private application code
-│   ├── user/          # User domain (Developer 1)
-│   │   ├── handler/   # HTTP handlers
-│   │   ├── service/   # Business logic
-│   │   └── repository/# Data access
-│   ├── content/       # Content domain (Developer 2)
+│   ├── user/          # User domain
 │   │   ├── handler/   # HTTP handlers
 │   │   ├── service/   # Business logic
 │   │   └── repository/# Data access
 │   ├── common/        # Shared code
 │   │   ├── config/    # Configuration
+│   │   ├── interfaces/# Service interfaces
 │   │   ├── middleware/# HTTP middleware
 │   │   └── model/     # Domain models
 │   └── platform/      # Infrastructure
@@ -78,9 +77,10 @@ make setup
 make start-db
 ```
 
-5. Run database migrations:
+5. Create the database and run migrations:
 
 ```bash
+make create-db
 make migrate-up
 ```
 
@@ -120,9 +120,13 @@ The API follows RESTful principles with these main endpoints:
 - `POST /api/v1/users/:id/follow` - Follow/unfollow a user
 - `GET /api/v1/posts/:id` - Get a post
 - `POST /api/v1/posts` - Create a post
+- `PUT /api/v1/posts/:id` - Update a post
+- `DELETE /api/v1/posts/:id` - Delete a post
 - `GET /api/v1/posts/feed` - Get user feed
 - `GET /api/v1/widgets/user/:userId` - Get user widgets
 - `POST /api/v1/widgets` - Create a widget
+- `PUT /api/v1/widgets/:id` - Update a widget
+- `DELETE /api/v1/widgets/:id` - Delete a widget
 - `POST /api/v1/widgets/batch-update` - Update multiple widgets
 
 ## Deployment
@@ -149,7 +153,19 @@ The application can be configured using environment variables instead of the con
 - `DATABASE_USER` - PostgreSQL user
 - `DATABASE_PASSWORD` - PostgreSQL password
 - `DATABASE_NAME` - PostgreSQL database name
+- `DATABASE_SSL_MODE` - PostgreSQL SSL mode
 - `AUTH_CLERK_SECRET_KEY` - Clerk API secret key
 - `CACHE_TYPE` - Cache type (memory or redis)
 - `CACHE_REDIS_URL` - Redis URL (if using Redis cache)
 - `LOG_LEVEL` - Logging level (debug, info, warn, error)
+
+## Architecture
+
+The application follows clean architecture principles with clear separation of concerns:
+
+- **Handlers** - Handle HTTP requests and responses
+- **Services** - Implement business logic and orchestrate repository calls
+- **Repositories** - Manage data access and persistence
+- **Models** - Define domain entities and DTOs
+
+For more detailed implementation guidelines, refer to the [Developer Guide](docs/DEV_GUIDE.MD).

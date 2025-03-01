@@ -2,84 +2,75 @@ package logger
 
 import (
 	"os"
+	"strings"
 
 	"github.com/rs/zerolog"
 )
 
-// Logger defines methods for logging
+// Logger is a wrapper around zerolog.Logger
 type Logger interface {
-	Debug() zerolog.Event
-	Info() zerolog.Event
-	Warn() zerolog.Event
-	Error() zerolog.Event
-	Fatal() zerolog.Event
-	With() zerolog.Context
-	Sync() error
+	Debug() *zerolog.Event // Changed return type to pointer
+	Info() *zerolog.Event  // Changed return type to pointer
+	Warn() *zerolog.Event  // Changed return type to pointer
+	Error() *zerolog.Event // Changed return type to pointer
+	Fatal() *zerolog.Event // Changed return type to pointer
 }
 
-// ZapLogger implements Logger with Zerolog
-type ZeroLogger struct {
+// zerologLogger is an implementation of Logger using zerolog
+type zerologLogger struct {
 	logger zerolog.Logger
 }
 
-// NewZapLogger creates a new logger
-func NewZapLogger(level string) *ZeroLogger {
-	// Set global time format
-	zerolog.TimeFieldFormat = zerolog.TimeFormatISO8601
+// NewLogger creates a new logger instance
+func NewLogger(level string) Logger {
+	// Fixed the constant usage
+	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix // Changed to an existing constant
 
-	// Parse log level
-	logLevel, err := zerolog.ParseLevel(level)
-	if err != nil {
+	// Set log level
+	var logLevel zerolog.Level
+	switch strings.ToLower(level) {
+	case "debug":
+		logLevel = zerolog.DebugLevel
+	case "info":
+		logLevel = zerolog.InfoLevel
+	case "warn":
+		logLevel = zerolog.WarnLevel
+	case "error":
+		logLevel = zerolog.ErrorLevel
+	default:
 		logLevel = zerolog.InfoLevel
 	}
 
-	// Setup console writer
-	consoleWriter := zerolog.ConsoleWriter{Out: os.Stdout}
-
-	// Create logger
-	logger := zerolog.New(consoleWriter).
-		With().
-		Timestamp().
-		Logger().
-		Level(logLevel)
-
-	return &ZeroLogger{
-		logger: logger,
+	return &zerologLogger{
+		logger: zerolog.New(os.Stdout).
+			Level(logLevel).
+			With().
+			Timestamp().
+			Logger(),
 	}
 }
 
-// Debug returns a debug level event
-func (l *ZeroLogger) Debug() zerolog.Event {
+// Debug returns a debug event logger
+func (l *zerologLogger) Debug() *zerolog.Event {
 	return l.logger.Debug()
 }
 
-// Info returns an info level event
-func (l *ZeroLogger) Info() zerolog.Event {
+// Info returns an info event logger
+func (l *zerologLogger) Info() *zerolog.Event {
 	return l.logger.Info()
 }
 
-// Warn returns a warn level event
-func (l *ZeroLogger) Warn() zerolog.Event {
+// Warn returns a warn event logger
+func (l *zerologLogger) Warn() *zerolog.Event {
 	return l.logger.Warn()
 }
 
-// Error returns an error level event
-func (l *ZeroLogger) Error() zerolog.Event {
+// Error returns an error event logger
+func (l *zerologLogger) Error() *zerolog.Event {
 	return l.logger.Error()
 }
 
-// Fatal returns a fatal level event
-func (l *ZeroLogger) Fatal() zerolog.Event {
+// Fatal returns a fatal event logger
+func (l *zerologLogger) Fatal() *zerolog.Event {
 	return l.logger.Fatal()
-}
-
-// With returns a context with fields
-func (l *ZeroLogger) With() zerolog.Context {
-	return l.logger.With()
-}
-
-// Sync flushes any buffered logs
-func (l *ZeroLogger) Sync() error {
-	// Zerolog doesn't require explicit synchronization
-	return nil
 }
