@@ -4,12 +4,12 @@ A high-performance Go backend for the Perfolio professional networking platform.
 
 ## Project Overview
 
-Perfolio API is a scalable backend service designed to power our LinkedIn-like platform with:
+Perfolio API is a scalable backend service designed to power our LinkedIn-like platform with a personal touch:
 
-- User profiles and connections
+- User profiles, authentication, and connections
 - Post creation and feed generation
-- Customizable profile widgets
-- High concurrency support
+- Customizable profile widgets with a drag-and-drop interface
+- High concurrency support through efficient caching
 
 ## Repository Structure
 
@@ -23,11 +23,11 @@ perfolio-api/
 ├── internal/          # Private application code
 │   ├── user/          # User domain
 │   │   ├── handler/   # HTTP handlers
+│   │   ├── interfaces/# Domain-specific interfaces
 │   │   ├── service/   # Business logic
 │   │   └── repository/# Data access
 │   ├── common/        # Shared code
 │   │   ├── config/    # Configuration
-│   │   ├── interfaces/# Service interfaces
 │   │   ├── middleware/# HTTP middleware
 │   │   └── model/     # Domain models
 │   └── platform/      # Infrastructure
@@ -44,23 +44,24 @@ perfolio-api/
 
 ## Domain Organization
 
-The codebase is organized by domain, allowing for focused development:
+The codebase is organized following domain-driven design principles, allowing for focused development:
 
 ### User Domain
 
 | Component  | Location                                | Responsibility       |
 | ---------- | --------------------------------------- | -------------------- |
 | Models     | `internal/common/model/user.go`         | User entities & DTOs |
+| Interfaces | `internal/user/interfaces/service.go`   | Service contracts    |
 | Repository | `internal/user/repository/user_repo.go` | Database operations  |
 | Service    | `internal/user/service/user_service.go` | Business logic       |
 | Handler    | `internal/user/handler/user_handler.go` | HTTP endpoints       |
 
-Handles:
+This domain handles:
 
 - User authentication and profiles
 - Connection/follow relationships
-- Profile data management
-- Posts, widgets, and content (currently in user domain)
+- Posts and content creation
+- Widget management for customizable profiles
 
 ## Getting Started
 
@@ -131,10 +132,11 @@ make lint
 ### Development Flow
 
 1. **Define the model** in `internal/common/model/`
-2. **Implement repository methods** in the appropriate repository
-3. **Add business logic** in the corresponding service
-4. **Create HTTP handlers** for API endpoints
-5. **Register routes** in the domain's handler registration
+2. **Define interfaces** in the domain's `interfaces/` directory
+3. **Implement repository methods** in the appropriate repository
+4. **Add business logic** in the corresponding service
+5. **Create HTTP handlers** for API endpoints
+6. **Register routes** in the domain's handler registration
 
 ### Example: Implementing a New Feature
 
@@ -155,7 +157,17 @@ type SavePostRequest struct {
 }
 ```
 
-2. **Add repository method**:
+2. **Add interface method**:
+
+```go
+// internal/user/interfaces/service.go
+type PostService interface {
+    // existing methods...
+    SavePost(ctx context.Context, userID string, req *model.SavePostRequest) error
+}
+```
+
+3. **Add repository method**:
 
 ```go
 // internal/user/repository/post_repo.go
@@ -175,7 +187,7 @@ func (r *postRepository) SavePost(ctx context.Context, userID, postID string) er
 }
 ```
 
-3. **Implement service method**:
+4. **Implement service method**:
 
 ```go
 // internal/user/service/post_service.go
@@ -195,7 +207,7 @@ func (s *postService) SavePost(ctx context.Context, userID string, req *model.Sa
 }
 ```
 
-4. **Create handler method**:
+5. **Create handler method**:
 
 ```go
 // internal/user/handler/post_handler.go
@@ -228,7 +240,7 @@ func (h *PostHandler) SavePost(c *gin.Context) {
 }
 ```
 
-5. **Register the route**:
+6. **Register the route**:
 
 ```go
 // cmd/api/app/router.go (in router setup)
@@ -343,11 +355,11 @@ s.cache.Set(cacheKey, user, 5*time.Minute)
 
 ## Authentication
 
-Authentication is handled via Clerk integration:
+Authentication is implemented using JWT tokens:
 
-- JWT token validation in `internal/common/middleware/auth.go`
-- Webhook processing for Clerk events
-- User ID extraction and context setting
+- Token generation and validation in `internal/common/middleware/auth.go`
+- User authentication in `internal/user/handler/auth_handler.go`
+- Access and refresh token handling for secure sessions
 
 Protected endpoints should use the authentication middleware:
 
@@ -355,6 +367,13 @@ Protected endpoints should use the authentication middleware:
 // In route registration
 router.POST("/api/v1/posts", authMiddleware.Authenticate(), postHandler.CreatePost)
 ```
+
+Authentication flow:
+
+1. User registers or logs in via `/api/v1/auth/register` or `/api/v1/auth/login`
+2. Server issues access token (24-hour validity) and refresh token (30-day validity)
+3. Client includes access token in Authorization header for protected requests
+4. When access token expires, client uses `/api/v1/auth/refresh` with the refresh token to get a new access token
 
 ## Testing
 
@@ -456,6 +475,7 @@ DATABASE_USER=postgres
 DATABASE_PASSWORD=postgres
 DATABASE_NAME=perfolio
 DATABASE_SSL_MODE=disable
+AUTH_JWT_SECRET=your-secure-secret-key
 CACHE_TYPE=redis
 CACHE_REDIS_URL=redis://redis:6379
 LOG_LEVEL=info
@@ -524,7 +544,7 @@ If you encounter database connection problems:
 
 If you encounter import cycle errors:
 
-1. Use interfaces in common packages instead of direct imports
+1. Move interfaces to the domain's interfaces package
 2. Make sure all files in a directory belong to the same package
 3. Keep application entry points (`main.go`) in the main package
 4. Move application setup into a separate `app` package
@@ -540,19 +560,29 @@ If changes aren't being detected:
 
 ## API Routes Reference
 
-| Method | Path                         | Description             | Auth Required |
-| ------ | ---------------------------- | ----------------------- | ------------- |
-| GET    | /api/v1/users/:id            | Get user profile        | No            |
-| PUT    | /api/v1/users/:id            | Update user profile     | Yes           |
-| GET    | /api/v1/users/search         | Search users            | No            |
-| POST   | /api/v1/users/:id/follow     | Follow/unfollow a user  | Yes           |
-| GET    | /api/v1/posts/:id            | Get a post              | No            |
-| POST   | /api/v1/posts                | Create a post           | Yes           |
-| PUT    | /api/v1/posts/:id            | Update a post           | Yes           |
-| DELETE | /api/v1/posts/:id            | Delete a post           | Yes           |
-| GET    | /api/v1/posts/feed           | Get user feed           | Yes           |
-| GET    | /api/v1/widgets/user/:userId | Get user widgets        | No            |
-| POST   | /api/v1/widgets              | Create a widget         | Yes           |
-| PUT    | /api/v1/widgets/:id          | Update a widget         | Yes           |
-| DELETE | /api/v1/widgets/:id          | Delete a widget         | Yes           |
-| POST   | /api/v1/widgets/batch-update | Update multiple widgets | Yes           |
+| Method | Path                         | Description                      | Auth Required |
+| ------ | ---------------------------- | -------------------------------- | ------------- |
+| POST   | /api/v1/auth/register        | Register a new user              | No            |
+| POST   | /api/v1/auth/login           | User login                       | No            |
+| POST   | /api/v1/auth/refresh         | Refresh authentication token     | No            |
+| POST   | /api/v1/auth/logout          | User logout                      | Yes           |
+| GET    | /api/v1/auth/me              | Get current authenticated user   | Yes           |
+| GET    | /api/v1/users/:id            | Get user profile                 | No            |
+| PUT    | /api/v1/users/:id            | Update user profile              | Yes           |
+| GET    | /api/v1/users/search         | Search users                     | No            |
+| POST   | /api/v1/users/:id/follow     | Follow/unfollow a user           | Yes           |
+| GET    | /api/v1/users/:id/followers  | Get user's followers             | No            |
+| GET    | /api/v1/users/:id/following  | Get users being followed         | No            |
+| GET    | /api/v1/users/:id/stats      | Get profile statistics           | No            |
+| GET    | /api/v1/posts/:id            | Get a post                       | No            |
+| POST   | /api/v1/posts                | Create a post                    | Yes           |
+| PUT    | /api/v1/posts/:id            | Update a post                    | Yes           |
+| DELETE | /api/v1/posts/:id            | Delete a post                    | Yes           |
+| GET    | /api/v1/posts/feed           | Get user feed                    | Yes           |
+| GET    | /api/v1/posts/user/:userId   | Get user's posts                 | No            |
+| GET    | /api/v1/widgets/:id          | Get a specific widget            | No            |
+| GET    | /api/v1/widgets/user/:userId | Get user widgets                 | No            |
+| POST   | /api/v1/widgets              | Create a widget                  | Yes           |
+| PUT    | /api/v1/widgets/:id          | Update a widget                  | Yes           |
+| DELETE | /api/v1/widgets/:id          | Delete a widget                  | Yes           |
+| POST   | /api/v1/widgets/batch-update | Update multiple widget positions | Yes           |
