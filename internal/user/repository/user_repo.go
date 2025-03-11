@@ -48,7 +48,7 @@ func (r *userRepository) GetByID(ctx context.Context, id string) (*model.User, e
 			id, email, username, first_name, last_name, bio, 
 			auth_provider, image_url, is_active, created_at, updated_at
 		FROM 
-			"user"
+			"users"
 		WHERE 
 			id = $1
 	`
@@ -108,7 +108,7 @@ func (r *userRepository) GetByUsername(ctx context.Context, username string) (*m
 			id, email, username, first_name, last_name, bio, 
 			auth_provider, image_url, is_active, created_at, updated_at
 		FROM 
-			"user"
+			"users"
 		WHERE 
 			username = $1
 	`
@@ -163,33 +163,18 @@ func (r *userRepository) GetByUsername(ctx context.Context, username string) (*m
 
 // GetByEmail fetches a user by email
 func (r *userRepository) GetByEmail(ctx context.Context, email string) (*model.User, error) {
-	query := `
-		SELECT 
-			id, email, username, first_name, last_name, bio, 
-			auth_provider, image_url, is_active, created_at, updated_at
-		FROM 
-			"user"
-		WHERE 
-			email = $1
-	`
+	query := `SELECT id, email, username, first_name, last_name, bio, auth_provider, 
+	password_hash, image_url, is_active, created_at, updated_at 
+	FROM users WHERE email = $1`
 
 	var user model.User
 	var firstName, lastName, bio, imageURL sql.NullString
 	var updatedAt sql.NullTime
-	var authProviderStr string
 
 	err := r.db.QueryRowContext(ctx, query, email).Scan(
-		&user.ID,
-		&user.Email,
-		&user.Username,
-		&firstName,
-		&lastName,
-		&bio,
-		&authProviderStr,
-		&imageURL,
-		&user.IsActive,
-		&user.CreatedAt,
-		&updatedAt,
+		&user.ID, &user.Email, &user.Username, &firstName, &lastName, &bio,
+		&user.AuthProvider, &user.PasswordHash, &imageURL, &user.IsActive,
+		&user.CreatedAt, &updatedAt,
 	)
 
 	if err != nil {
@@ -216,7 +201,7 @@ func (r *userRepository) GetByEmail(ctx context.Context, email string) (*model.U
 		user.UpdatedAt = &updatedAt.Time
 	}
 
-	user.AuthProvider = model.AuthProvider(authProviderStr)
+	//user.AuthProvider = model.AuthProvider(authProviderStr)
 
 	return &user, nil
 }
@@ -224,7 +209,7 @@ func (r *userRepository) GetByEmail(ctx context.Context, email string) (*model.U
 // Create adds a new user
 func (r *userRepository) Create(ctx context.Context, user *model.User) error {
 	query := `
-		INSERT INTO "user" (
+		INSERT INTO "users" (
 			id, email, username, first_name, last_name, bio,
 			auth_provider, image_url, is_active, created_at
 		) VALUES (
@@ -278,7 +263,7 @@ func (r *userRepository) Create(ctx context.Context, user *model.User) error {
 // Update updates user properties
 func (r *userRepository) Update(ctx context.Context, id string, updates map[string]interface{}) error {
 	// Start building query
-	query := `UPDATE "user" SET updated_at = NOW()`
+	query := `UPDATE "users" SET updated_at = NOW()`
 	params := []interface{}{id} // First param is ID for the WHERE clause
 	paramCount := 1
 
@@ -334,7 +319,7 @@ func (r *userRepository) Search(ctx context.Context, query string, limit int) ([
 			id, email, username, first_name, last_name, bio, 
 			auth_provider, image_url, is_active, created_at, updated_at
 		FROM 
-			"user"
+			"users"
 		WHERE 
 			username ILIKE $1 OR
 			first_name ILIKE $1 OR
@@ -500,7 +485,7 @@ func (r *userRepository) GetFollowers(ctx context.Context, userID string, limit,
 			u.id, u.email, u.username, u.first_name, u.last_name, u.bio, 
 			u.auth_provider, u.image_url, u.is_active, u.created_at, u.updated_at
 		FROM 
-			"user" u
+			"users" u
 		JOIN 
 			follows f ON u.id = f.follower_id
 		WHERE 
@@ -583,7 +568,7 @@ func (r *userRepository) GetFollowing(ctx context.Context, userID string, limit,
 			u.id, u.email, u.username, u.first_name, u.last_name, u.bio, 
 			u.auth_provider, u.image_url, u.is_active, u.created_at, u.updated_at
 		FROM 
-			"user" u
+			"users" u
 		JOIN 
 			follows f ON u.id = f.following_id
 		WHERE 
@@ -658,7 +643,7 @@ func (r *userRepository) GetFollowing(ctx context.Context, userID string, limit,
 // Helper function to check if a user exists
 func (r *userRepository) userExists(ctx context.Context, id string) (bool, error) {
 	var exists bool
-	query := `SELECT EXISTS(SELECT 1 FROM "user" WHERE id = $1)`
+	query := `SELECT EXISTS(SELECT 1 FROM "users" WHERE id = $1)`
 	err := r.db.QueryRowContext(ctx, query, id).Scan(&exists)
 	if err != nil {
 		return false, fmt.Errorf("check user exists: %w", err)

@@ -11,11 +11,13 @@ import (
 	"github.com/PeterM45/perfolio-api/internal/platform/cache"
 	"github.com/PeterM45/perfolio-api/internal/platform/database"
 
+	authHandler "github.com/PeterM45/perfolio-api/internal/user/handler"
 	contentHandler "github.com/PeterM45/perfolio-api/internal/user/handler"
 	userHandler "github.com/PeterM45/perfolio-api/internal/user/handler"
 	contentRepo "github.com/PeterM45/perfolio-api/internal/user/repository"
 	userRepo "github.com/PeterM45/perfolio-api/internal/user/repository"
 	contentService "github.com/PeterM45/perfolio-api/internal/user/service"
+
 	"github.com/PeterM45/perfolio-api/pkg/logger"
 )
 
@@ -67,7 +69,7 @@ func New(cfg *config.Config, log logger.Logger) (*Application, error) {
 	widgetRepository := contentRepo.NewWidgetRepository(db)
 
 	// Initialize auth middleware
-	authMiddleware := middleware.NewAuthMiddleware(cfg.Auth.ClerkSecretKey)
+	authMiddleware := middleware.NewAuthMiddleware(cfg.Auth.JWTSecret)
 
 	// Initialize services
 	userSvc := interfaces.NewUserService(userRepository, cacheClient, log)
@@ -79,8 +81,10 @@ func New(cfg *config.Config, log logger.Logger) (*Application, error) {
 	postHandler := contentHandler.NewPostHandler(postSvc, log)
 	widgetHandler := contentHandler.NewWidgetHandler(widgetSvc, log)
 
+	authHandler := authHandler.NewAuthHandler(userSvc, authMiddleware, log)
+
 	// Initialize router
-	router := NewRouter(userHandler, postHandler, widgetHandler, authMiddleware, log)
+	router := NewRouter(userHandler, postHandler, widgetHandler, authHandler, authMiddleware, log)
 
 	// Create server
 	server := &http.Server{

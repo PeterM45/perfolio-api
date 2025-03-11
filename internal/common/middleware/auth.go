@@ -204,3 +204,7 @@ func (m *AuthMiddleware) GenerateToken(userID string, roles []string, expiration
 
 	return tokenString, nil
 }
+
+func (m *AuthMiddleware) GetSecretKey() string {
+	return m.jwtSecretKey
+}

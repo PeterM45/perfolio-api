@@ -10,6 +10,7 @@ import (
 	"github.com/PeterM45/perfolio-api/pkg/apperrors"
 	"github.com/PeterM45/perfolio-api/pkg/logger"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 // UserHandler handles HTTP requests for users
@@ -109,6 +110,10 @@ func (h *UserHandler) CreateUser(c *gin.Context) {
 	}
 
 	h.logger.Debug().Interface("request", req).Msg("Creating user")
+
+	if req.ID == "" && req.AuthProvider == model.AuthProviderCustom {
+		req.ID = uuid.New().String()
+	}
 
 	user, err := h.service.CreateUser(c, &req)
 	if err != nil {

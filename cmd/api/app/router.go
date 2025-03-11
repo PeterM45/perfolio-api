@@ -16,6 +16,7 @@ func NewRouter(
 	userHandler *userHandler.UserHandler,
 	postHandler *contentHandler.PostHandler,
 	widgetHandler *contentHandler.WidgetHandler,
+	authHandler *userHandler.AuthHandler,
 	authMiddleware *middleware.AuthMiddleware,
 	log logger.Logger,
 ) *gin.Engine {
@@ -48,32 +49,15 @@ func NewRouter(
 	// API v1 routes
 	v1 := router.Group("/api/v1")
 	{
+		// Register auth routes - must come first to handle auth endpoints
+		authHandler.RegisterRoutes(v1)
+
 		// Public routes - no authentication required
 		public := v1.Group("/public")
 		{
 			// Add any public routes here
 			public.GET("/config", func(c *gin.Context) {
 				c.JSON(200, gin.H{"version": "1.0"})
-			})
-		}
-
-		// Auth routes - for login/register/etc.
-		auth := v1.Group("/auth")
-		{
-			auth.POST("/login", func(c *gin.Context) {
-				// Placeholder for your login handler
-				// You would validate credentials and call authMiddleware.GenerateToken()
-				c.JSON(200, gin.H{"message": "login endpoint"})
-			})
-
-			auth.POST("/register", func(c *gin.Context) {
-				// Placeholder for your registration handler
-				c.JSON(200, gin.H{"message": "register endpoint"})
-			})
-
-			auth.POST("/refresh", func(c *gin.Context) {
-				// Placeholder for token refresh handler
-				c.JSON(200, gin.H{"message": "token refresh endpoint"})
 			})
 		}
 
