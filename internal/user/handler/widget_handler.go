@@ -25,17 +25,34 @@ func NewWidgetHandler(service service.WidgetService, logger logger.Logger) *Widg
 	}
 }
 
-// RegisterRoutes registers routes for the widget handler
+// RegisterRoutes registers all routes for backward compatibility
 func (h *WidgetHandler) RegisterRoutes(router *gin.RouterGroup) {
 	widgets := router.Group("/widgets")
 	{
+		// Public routes
 		widgets.GET("/:id", h.GetWidget)
 		widgets.GET("/user/:userId", h.GetUserWidgets)
+
+		// Protected routes - will check auth internally
 		widgets.POST("/", h.CreateWidget)
 		widgets.PUT("/:id", h.UpdateWidget)
 		widgets.DELETE("/:id", h.DeleteWidget)
 		widgets.POST("/batch-update", h.BatchUpdateWidgets)
 	}
+}
+
+// RegisterProtectedRoutes registers routes that require authentication
+func (h *WidgetHandler) RegisterProtectedRoutes(router *gin.RouterGroup) {
+	router.POST("/", h.CreateWidget)
+	router.PUT("/:id", h.UpdateWidget)
+	router.DELETE("/:id", h.DeleteWidget)
+	router.POST("/batch-update", h.BatchUpdateWidgets)
+}
+
+// RegisterPublicRoutes registers routes that don't require authentication
+func (h *WidgetHandler) RegisterPublicRoutes(router *gin.RouterGroup) {
+	router.GET("/:id", h.GetWidget)
+	router.GET("/user/:userId", h.GetUserWidgets)
 }
 
 // GetWidget handles GET /widgets/:id

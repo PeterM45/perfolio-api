@@ -10,19 +10,19 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-// AuthMiddleware handles authentication with Clerk
+// AuthMiddleware handles authentication with custom JWT
 type AuthMiddleware struct {
-	clerkSecretKey string
+	jwtSecretKey string
 }
 
 // NewAuthMiddleware creates a new auth middleware
-func NewAuthMiddleware(clerkSecretKey string) *AuthMiddleware {
+func NewAuthMiddleware(jwtSecretKey string) *AuthMiddleware {
 	return &AuthMiddleware{
-		clerkSecretKey: clerkSecretKey,
+		jwtSecretKey: jwtSecretKey,
 	}
 }
 
-// Authenticate verifies the JWT token from Clerk
+// Authenticate verifies the JWT token
 func (m *AuthMiddleware) Authenticate() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// Get Authorization header
@@ -50,13 +50,13 @@ func (m *AuthMiddleware) Authenticate() gin.HandlerFunc {
 
 		// Parse and validate the token
 		token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-			// Validate the alg
+			// Validate the alg is what we expect
 			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 				return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 			}
 
 			// Return the key for validation
-			return []byte(m.clerkSecretKey), nil
+			return []byte(m.jwtSecretKey), nil
 		})
 
 		if err != nil {
@@ -94,22 +94,27 @@ func (m *AuthMiddleware) Authenticate() gin.HandlerFunc {
 			return
 		}
 
-		// Extract user ID from claims (adjust based on Clerk's JWT format)
-		sub, ok := claims["sub"].(string)
-		if !ok || sub == "" {
+		// Extract user ID from claims
+		userID, ok := claims["user_id"].(string)
+		if !ok || userID == "" {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid user ID in token"})
 			c.Abort()
 			return
 		}
 
+		// Extract additional claims if needed
+		// For example, user roles or permissions
+		if roles, ok := claims["roles"].([]interface{}); ok {
+			c.Set("userRoles", roles)
+		}
+
 		// Set the user ID in context
-		c.Set("userID", sub)
+		c.Set("userID", userID)
 		c.Next()
 	}
 }
 
-// Optional middleware to check if user is authenticated
-// but doesn't block if they're not
+// OptionalAuthenticate checks for authentication but doesn't block if not present
 func (m *AuthMiddleware) OptionalAuthenticate() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
@@ -139,7 +144,7 @@ func (m *AuthMiddleware) OptionalAuthenticate() gin.HandlerFunc {
 			}
 
 			// Return the key for validation
-			return []byte(m.clerkSecretKey), nil
+			return []byte(m.jwtSecretKey), nil
 		})
 
 		if err != nil || !token.Valid {
@@ -162,37 +167,40 @@ func (m *AuthMiddleware) OptionalAuthenticate() gin.HandlerFunc {
 		}
 
 		// Extract user ID from claims
-		sub, ok := claims["sub"].(string)
-		if !ok || sub == "" {
+		userID, ok := claims["user_id"].(string)
+		if !ok || userID == "" {
 			c.Next()
 			return
 		}
 
+		// Extract additional claims if needed
+		if roles, ok := claims["roles"].([]interface{}); ok {
+			c.Set("userRoles", roles)
+		}
+
 		// Set the user ID in context
-		c.Set("userID", sub)
+		c.Set("userID", userID)
 		c.Next()
 	}
 }
 
-// ClerkWebhookHandler is a middleware to handle Clerk webhooks
-// This verifies the webhook signature from Clerk
-func (m *AuthMiddleware) ClerkWebhookHandler() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		svix_id := c.GetHeader("svix-id")
-		svix_timestamp := c.GetHeader("svix-timestamp")
-		svix_signature := c.GetHeader("svix-signature")
+// GenerateToken creates a new JWT token for a user
+func (m *AuthMiddleware) GenerateToken(userID string, roles []string, expiration time.Duration) (string, error) {
+	// Create the token
+	token := jwt.New(jwt.SigningMethodHS256)
 
-		// Verify webhook
-		if svix_id == "" || svix_timestamp == "" || svix_signature == "" {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "missing svix headers"})
-			c.Abort()
-			return
-		}
+	// Set claims
+	claims := token.Claims.(jwt.MapClaims)
+	claims["user_id"] = userID
+	claims["roles"] = roles
+	claims["exp"] = time.Now().Add(expiration).Unix()
+	claims["iat"] = time.Now().Unix()
 
-		// TODO: Implement actual signature verification if needed
-		// This is simplified for now and should be expanded based on Clerk's docs
-		// https://clerk.dev/docs/integrations/webhooks
-
-		c.Next()
+	// Generate encoded token
+	tokenString, err := token.SignedString([]byte(m.jwtSecretKey))
+	if err != nil {
+		return "", err
 	}
+
+	return tokenString, nil
 }

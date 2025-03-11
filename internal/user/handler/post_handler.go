@@ -26,17 +26,34 @@ func NewPostHandler(service service.PostService, logger logger.Logger) *PostHand
 	}
 }
 
-// RegisterRoutes registers routes for the post handler
+// RegisterRoutes registers all routes for backward compatibility
 func (h *PostHandler) RegisterRoutes(router *gin.RouterGroup) {
 	posts := router.Group("/posts")
 	{
+		// Public routes
 		posts.GET("/:id", h.GetPost)
+		posts.GET("/user/:userId", h.GetUserPosts)
+
+		// Protected routes - will check auth internally
 		posts.POST("/", h.CreatePost)
 		posts.PUT("/:id", h.UpdatePost)
 		posts.DELETE("/:id", h.DeletePost)
-		posts.GET("/user/:userId", h.GetUserPosts)
 		posts.GET("/feed", h.GetFeed)
 	}
+}
+
+// RegisterProtectedRoutes registers routes that require authentication
+func (h *PostHandler) RegisterProtectedRoutes(router *gin.RouterGroup) {
+	router.POST("/", h.CreatePost)
+	router.PUT("/:id", h.UpdatePost)
+	router.DELETE("/:id", h.DeletePost)
+	router.GET("/feed", h.GetFeed)
+}
+
+// RegisterPublicRoutes registers routes that don't require authentication
+func (h *PostHandler) RegisterPublicRoutes(router *gin.RouterGroup) {
+	router.GET("/:id", h.GetPost)
+	router.GET("/user/:userId", h.GetUserPosts)
 }
 
 // GetPost handles GET /posts/:id

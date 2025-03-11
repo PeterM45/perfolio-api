@@ -97,6 +97,9 @@ The API will be available at `http://localhost:8080`.
 ### Common Commands
 
 ```bash
+# Go into PSQL
+psql -h localhost -p 5432 -U postgres -d perfolio
+
 # Run tests
 make test
 

@@ -48,26 +48,64 @@ func NewRouter(
 	// API v1 routes
 	v1 := router.Group("/api/v1")
 	{
-		// Register user routes
-		userHandler.RegisterRoutes(v1)
-
-		// Register post routes
-		postHandler.RegisterRoutes(v1)
-
-		// Register widget routes
-		widgetHandler.RegisterRoutes(v1)
-
-		// Webhook routes
-		webhooks := v1.Group("/webhooks")
+		// Public routes - no authentication required
+		public := v1.Group("/public")
 		{
-			// Clerk webhook route
-			clerk := webhooks.Group("/clerk").Use(authMiddleware.ClerkWebhookHandler())
-			{
-				clerk.POST("/", func(c *gin.Context) {
-					// Process Clerk webhook event
-					c.JSON(200, gin.H{"status": "webhook received"})
-				})
-			}
+			// Add any public routes here
+			public.GET("/config", func(c *gin.Context) {
+				c.JSON(200, gin.H{"version": "1.0"})
+			})
+		}
+
+		// Auth routes - for login/register/etc.
+		auth := v1.Group("/auth")
+		{
+			auth.POST("/login", func(c *gin.Context) {
+				// Placeholder for your login handler
+				// You would validate credentials and call authMiddleware.GenerateToken()
+				c.JSON(200, gin.H{"message": "login endpoint"})
+			})
+
+			auth.POST("/register", func(c *gin.Context) {
+				// Placeholder for your registration handler
+				c.JSON(200, gin.H{"message": "register endpoint"})
+			})
+
+			auth.POST("/refresh", func(c *gin.Context) {
+				// Placeholder for token refresh handler
+				c.JSON(200, gin.H{"message": "token refresh endpoint"})
+			})
+		}
+
+		// Protected routes - require authentication
+		protected := v1.Group("")
+		protected.Use(authMiddleware.Authenticate())
+		{
+			// Register user routes that need authentication
+			userGroup := protected.Group("/users")
+			userHandler.RegisterProtectedRoutes(userGroup)
+
+			// Register protected post routes
+			postGroup := protected.Group("/posts")
+			postHandler.RegisterProtectedRoutes(postGroup)
+
+			// Register protected widget routes
+			widgetGroup := protected.Group("/widgets")
+			widgetHandler.RegisterProtectedRoutes(widgetGroup)
+		}
+
+		// Optional authentication routes
+		optional := v1.Group("")
+		optional.Use(authMiddleware.OptionalAuthenticate())
+		{
+			// Register user routes with optional authentication
+			userHandler.RegisterPublicRoutes(v1.Group("/users"))
+
+			// Register post routes with optional authentication
+			postHandler.RegisterPublicRoutes(v1.Group("/posts"))
+
+			// Register widget routes with optional authentication
+			widgetHandler.RegisterPublicRoutes(v1.Group("/widgets"))
 		}
 	}
 

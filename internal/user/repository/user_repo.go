@@ -14,15 +14,13 @@ import (
 
 // UserRepository defines methods to interact with user data
 type UserRepository interface {
-	// User operations
 	GetByID(ctx context.Context, id string) (*model.User, error)
-	GetByEmail(ctx context.Context, email string) (*model.User, error)
 	GetByUsername(ctx context.Context, username string) (*model.User, error)
+	GetByEmail(ctx context.Context, email string) (*model.User, error)
 	Create(ctx context.Context, user *model.User) error
 	Update(ctx context.Context, id string, updates map[string]interface{}) error
 	Search(ctx context.Context, query string, limit int) ([]*model.User, error)
 
-	// Follow operations
 	AddFollow(ctx context.Context, followerID, followingID string) error
 	RemoveFollow(ctx context.Context, followerID, followingID string) error
 	IsFollowing(ctx context.Context, followerID, followingID string) (bool, error)

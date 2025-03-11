@@ -26,24 +26,48 @@ func NewUserHandler(service interfaces.UserService, logger logger.Logger) *UserH
 	}
 }
 
-// RegisterRoutes registers routes for the user handler
+// RegisterRoutes registers all routes for backward compatibility
+// This will be deprecated in favor of RegisterProtectedRoutes and RegisterPublicRoutes
 func (h *UserHandler) RegisterRoutes(router *gin.RouterGroup) {
 	users := router.Group("/users")
 	{
-		// Profile routes
+		// Public profile routes
 		users.GET("/:id", h.GetUserByID)
 		users.GET("/username/:username", h.GetUserByUsername)
-		users.POST("/", h.CreateUser)
-		users.PUT("/:id", h.UpdateUser)
 		users.GET("/search", h.SearchUsers)
-
-		// Follow routes
-		users.POST("/:id/follow", h.ToggleFollow)
 		users.GET("/:id/is-following/:targetId", h.IsFollowing)
 		users.GET("/:id/stats", h.GetProfileStats)
 		users.GET("/:id/followers", h.GetFollowers)
 		users.GET("/:id/following", h.GetFollowing)
+
+		// These routes should be protected but are kept for backward compatibility
+		// They will check for authentication internally
+		users.POST("/", h.CreateUser)
+		users.PUT("/:id", h.UpdateUser)
+		users.POST("/:id/follow", h.ToggleFollow)
 	}
+}
+
+// RegisterProtectedRoutes registers routes that require authentication
+func (h *UserHandler) RegisterProtectedRoutes(router *gin.RouterGroup) {
+	// Routes that require authentication
+	router.POST("/", h.CreateUser)
+	router.PUT("/:id", h.UpdateUser)
+	router.POST("/:id/follow", h.ToggleFollow)
+
+	// Admin-only routes could be added here
+}
+
+// RegisterPublicRoutes registers routes that don't require authentication
+func (h *UserHandler) RegisterPublicRoutes(router *gin.RouterGroup) {
+	// Routes that don't require authentication
+	router.GET("/:id", h.GetUserByID)
+	router.GET("/username/:username", h.GetUserByUsername)
+	router.GET("/search", h.SearchUsers)
+	router.GET("/:id/is-following/:targetId", h.IsFollowing)
+	router.GET("/:id/stats", h.GetProfileStats)
+	router.GET("/:id/followers", h.GetFollowers)
+	router.GET("/:id/following", h.GetFollowing)
 }
 
 // GetUserByID handles GET /users/:id

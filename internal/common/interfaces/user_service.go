@@ -11,14 +11,18 @@ import (
 	"github.com/PeterM45/perfolio-api/pkg/apperrors"
 	"github.com/PeterM45/perfolio-api/pkg/logger"
 	"github.com/PeterM45/perfolio-api/pkg/validator"
+	"golang.org/x/crypto/bcrypt"
 )
 
 // UserService defines methods for user business logic
 type UserService interface {
 	GetUserByID(ctx context.Context, id string) (*model.User, error)
 	GetUserByUsername(ctx context.Context, username string) (*model.User, error)
+	GetUserByEmail(ctx context.Context, email string) (*model.User, error)
 	CreateUser(ctx context.Context, req *model.CreateUserRequest) (*model.User, error)
 	UpdateUser(ctx context.Context, id string, req *model.UpdateUserRequest) (*model.User, error)
+	ChangePassword(ctx context.Context, id string, req *model.ChangePasswordRequest) error
+	VerifyPassword(ctx context.Context, id string, password string) (bool, error)
 	SearchUsers(ctx context.Context, query string, limit int) ([]*model.User, error)
 
 	ToggleFollow(ctx context.Context, req *model.FollowRequest, followerID string) error
@@ -96,6 +100,32 @@ func (s *userService) GetUserByUsername(ctx context.Context, username string) (*
 	return user, nil
 }
 
+// GetUserByEmail retrieves a user by email
+func (s *userService) GetUserByEmail(ctx context.Context, email string) (*model.User, error) {
+	if email == "" {
+		return nil, apperrors.BadRequest("email cannot be empty")
+	}
+
+	// Check cache first
+	cacheKey := fmt.Sprintf("user:email:%s", email)
+	if cachedUser, found := s.cache.Get(cacheKey); found {
+		s.logger.Debug().Str("email", email).Msg("User found in cache by email")
+		return cachedUser.(*model.User), nil
+	}
+
+	// Get from repository
+	user, err := s.repo.GetByEmail(ctx, email)
+	if err != nil {
+		return nil, err
+	}
+
+	// Store in cache
+	s.cache.Set(cacheKey, user, 5*time.Minute)
+	s.cache.Set(fmt.Sprintf("user:%s", user.ID), user, 5*time.Minute)
+
+	return user, nil
+}
+
 // CreateUser creates a new user
 func (s *userService) CreateUser(ctx context.Context, req *model.CreateUserRequest) (*model.User, error) {
 	if err := s.validator.Validate(req); err != nil {
@@ -108,6 +138,23 @@ func (s *userService) CreateUser(ctx context.Context, req *model.CreateUserReque
 		return nil, apperrors.BadRequest("username already taken")
 	}
 
+	// Check if email is available for custom auth
+	if req.AuthProvider == model.AuthProviderCustom && req.Email != "" {
+		existingUser, err := s.repo.GetByEmail(ctx, req.Email)
+		if err == nil && existingUser != nil {
+			return nil, apperrors.BadRequest("email already registered")
+		}
+	}
+
+	// Generate UUID for custom auth if not provided
+	if req.ID == "" && req.AuthProvider == model.AuthProviderCustom {
+		// Use your UUID generation logic here
+		// For example, using github.com/google/uuid:
+		// req.ID = uuid.New().String()
+
+		// Or you can let your repository handle ID generation
+	}
+
 	// Convert to user model
 	user := &model.User{
 		ID:           req.ID,
@@ -118,6 +165,7 @@ func (s *userService) CreateUser(ctx context.Context, req *model.CreateUserReque
 		Bio:          req.Bio,
 		AuthProvider: req.AuthProvider,
 		ImageURL:     req.ImageURL,
+		PasswordHash: req.PasswordHash, // Set from hashed password
 		IsActive:     true,
 	}
 
@@ -180,6 +228,37 @@ func (s *userService) UpdateUser(ctx context.Context, id string, req *model.Upda
 		updates["isActive"] = *req.IsActive
 	}
 
+	// Handle password update if provided
+	if req.Password != nil && *req.Password != "" {
+		// Verify current password if provided
+		if req.CurrentPassword != nil && *req.CurrentPassword != "" {
+			isValid, err := s.VerifyPassword(ctx, id, *req.CurrentPassword)
+			if err != nil {
+				return nil, err
+			}
+			if !isValid {
+				return nil, apperrors.BadRequest("current password is incorrect")
+			}
+		} else {
+			// Only allow password change without verification for OAuth users converting to custom auth
+			if existingUser.AuthProvider != model.AuthProviderOAuth &&
+				existingUser.AuthProvider != model.AuthProviderGoogle &&
+				existingUser.AuthProvider != model.AuthProviderGithub {
+				return nil, apperrors.BadRequest("current password verification required")
+			}
+			// Update auth provider if converting from OAuth
+			updates["authProvider"] = model.AuthProviderCustom
+		}
+
+		// Hash the new password
+		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(*req.Password), bcrypt.DefaultCost)
+		if err != nil {
+			s.logger.Error().Err(err).Msg("Failed to hash password")
+			return nil, apperrors.InternalError("password update failed")
+		}
+		updates["passwordHash"] = string(hashedPassword)
+	}
+
 	// Only update if there are changes
 	if len(updates) > 0 {
 		err = s.repo.Update(ctx, id, updates)
@@ -192,12 +271,67 @@ func (s *userService) UpdateUser(ctx context.Context, id string, req *model.Upda
 		if req.Username != nil {
 			s.cache.Delete(fmt.Sprintf("user:username:%s", existingUser.Username))
 		}
+		s.cache.Delete(fmt.Sprintf("user:email:%s", existingUser.Email))
 
 		// Get updated user
 		return s.repo.GetByID(ctx, id)
 	}
 
 	return existingUser, nil
+}
+
+// ChangePassword changes a user's password with verification
+func (s *userService) ChangePassword(ctx context.Context, id string, req *model.ChangePasswordRequest) error {
+	if err := s.validator.Validate(req); err != nil {
+		return apperrors.BadRequest(err.Error())
+	}
+
+	// Verify current password
+	isValid, err := s.VerifyPassword(ctx, id, req.CurrentPassword)
+	if err != nil {
+		return err
+	}
+
+	if !isValid {
+		return apperrors.BadRequest("current password is incorrect")
+	}
+
+	// Hash the new password
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.NewPassword), bcrypt.DefaultCost)
+	if err != nil {
+		s.logger.Error().Err(err).Msg("Failed to hash password")
+		return apperrors.InternalError("password update failed")
+	}
+
+	// Update the password hash
+	updates := map[string]interface{}{
+		"passwordHash": string(hashedPassword),
+	}
+
+	err = s.repo.Update(ctx, id, updates)
+	if err != nil {
+		return err
+	}
+
+	// Invalidate cache
+	s.cache.Delete(fmt.Sprintf("user:%s", id))
+
+	return nil
+}
+
+// VerifyPassword verifies a user's password
+func (s *userService) VerifyPassword(ctx context.Context, id string, password string) (bool, error) {
+	user, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		return false, err
+	}
+
+	if user.PasswordHash == "" {
+		return false, apperrors.BadRequest("user has no password set")
+	}
+
+	err = bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password))
+	return err == nil, nil
 }
 
 // SearchUsers searches for users
