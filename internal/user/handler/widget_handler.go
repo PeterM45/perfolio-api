@@ -5,7 +5,7 @@ import (
 	"net/http"
 
 	"github.com/PeterM45/perfolio-api/internal/common/model"
-	"github.com/PeterM45/perfolio-api/internal/user/service"
+	"github.com/PeterM45/perfolio-api/internal/user/interfaces"
 	"github.com/PeterM45/perfolio-api/pkg/apperrors"
 	"github.com/PeterM45/perfolio-api/pkg/logger"
 	"github.com/gin-gonic/gin"
@@ -13,12 +13,12 @@ import (
 
 // WidgetHandler handles HTTP requests for widgets
 type WidgetHandler struct {
-	service service.WidgetService
+	service interfaces.WidgetService
 	logger  logger.Logger
 }
 
 // NewWidgetHandler creates a new WidgetHandler
-func NewWidgetHandler(service service.WidgetService, logger logger.Logger) *WidgetHandler {
+func NewWidgetHandler(service interfaces.WidgetService, logger logger.Logger) *WidgetHandler {
 	return &WidgetHandler{
 		service: service,
 		logger:  logger,

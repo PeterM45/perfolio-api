@@ -5,25 +5,15 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/PeterM45/perfolio-api/internal/common/interfaces"
 	"github.com/PeterM45/perfolio-api/internal/common/model"
 	"github.com/PeterM45/perfolio-api/internal/platform/cache"
+	"github.com/PeterM45/perfolio-api/internal/user/interfaces"
 	"github.com/PeterM45/perfolio-api/internal/user/repository"
 	"github.com/PeterM45/perfolio-api/pkg/apperrors"
 	"github.com/PeterM45/perfolio-api/pkg/logger"
 	"github.com/PeterM45/perfolio-api/pkg/validator"
 	"github.com/google/uuid"
 )
-
-// PostService defines methods for post business logic
-type PostService interface {
-	CreatePost(ctx context.Context, userID string, req *model.CreatePostRequest) (*model.Post, error)
-	GetPostByID(ctx context.Context, id string) (*model.Post, error)
-	UpdatePost(ctx context.Context, id string, userID string, req *model.UpdatePostRequest) (*model.Post, error)
-	DeletePost(ctx context.Context, id string, userID string) error
-	GetUserPosts(ctx context.Context, userID string, limit, offset int) ([]*model.Post, error)
-	GetFeed(ctx context.Context, userID string, limit, offset int) ([]*model.Post, error)
-}
 
 type postService struct {
 	repo        repository.PostRepository
@@ -39,7 +29,7 @@ func NewPostService(
 	userService interfaces.UserService,
 	cache cache.Cache,
 	logger logger.Logger,
-) PostService {
+) interfaces.PostService {
 	return &postService{
 		repo:        repo,
 		userService: userService,

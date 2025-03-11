@@ -6,9 +6,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/PeterM45/perfolio-api/internal/common/interfaces"
 	"github.com/PeterM45/perfolio-api/internal/common/middleware"
 	"github.com/PeterM45/perfolio-api/internal/common/model"
+	"github.com/PeterM45/perfolio-api/internal/user/interfaces"
 	"github.com/PeterM45/perfolio-api/pkg/logger"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"

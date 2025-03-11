@@ -6,17 +6,13 @@ import (
 	"net/http"
 
 	"github.com/PeterM45/perfolio-api/internal/common/config"
-	"github.com/PeterM45/perfolio-api/internal/common/interfaces"
 	"github.com/PeterM45/perfolio-api/internal/common/middleware"
 	"github.com/PeterM45/perfolio-api/internal/platform/cache"
 	"github.com/PeterM45/perfolio-api/internal/platform/database"
 
-	authHandler "github.com/PeterM45/perfolio-api/internal/user/handler"
-	contentHandler "github.com/PeterM45/perfolio-api/internal/user/handler"
-	userHandler "github.com/PeterM45/perfolio-api/internal/user/handler"
-	contentRepo "github.com/PeterM45/perfolio-api/internal/user/repository"
-	userRepo "github.com/PeterM45/perfolio-api/internal/user/repository"
-	contentService "github.com/PeterM45/perfolio-api/internal/user/service"
+	"github.com/PeterM45/perfolio-api/internal/user/handler"
+	"github.com/PeterM45/perfolio-api/internal/user/repository"
+	"github.com/PeterM45/perfolio-api/internal/user/service"
 
 	"github.com/PeterM45/perfolio-api/pkg/logger"
 )
@@ -64,24 +60,23 @@ func New(cfg *config.Config, log logger.Logger) (*Application, error) {
 	}
 
 	// Initialize repositories
-	userRepository := userRepo.NewUserRepository(db)
-	postRepository := contentRepo.NewPostRepository(db)
-	widgetRepository := contentRepo.NewWidgetRepository(db)
+	userRepository := repository.NewUserRepository(db)
+	postRepository := repository.NewPostRepository(db)
+	widgetRepository := repository.NewWidgetRepository(db)
 
 	// Initialize auth middleware
 	authMiddleware := middleware.NewAuthMiddleware(cfg.Auth.JWTSecret)
 
 	// Initialize services
-	userSvc := interfaces.NewUserService(userRepository, cacheClient, log)
-	postSvc := contentService.NewPostService(postRepository, userSvc, cacheClient, log)
-	widgetSvc := contentService.NewWidgetService(widgetRepository, userSvc, cacheClient, log)
+	userSvc := service.NewUserService(userRepository, cacheClient, log)
+	postSvc := service.NewPostService(postRepository, userSvc, cacheClient, log)
+	widgetSvc := service.NewWidgetService(widgetRepository, userSvc, cacheClient, log)
 
 	// Initialize handlers
-	userHandler := userHandler.NewUserHandler(userSvc, log)
-	postHandler := contentHandler.NewPostHandler(postSvc, log)
-	widgetHandler := contentHandler.NewWidgetHandler(widgetSvc, log)
-
-	authHandler := authHandler.NewAuthHandler(userSvc, authMiddleware, log)
+	userHandler := handler.NewUserHandler(userSvc, log)
+	postHandler := handler.NewPostHandler(postSvc, log)
+	widgetHandler := handler.NewWidgetHandler(widgetSvc, log)
+	authHandler := handler.NewAuthHandler(userSvc, authMiddleware, log)
 
 	// Initialize router
 	router := NewRouter(userHandler, postHandler, widgetHandler, authHandler, authMiddleware, log)

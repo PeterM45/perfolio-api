@@ -1,4 +1,4 @@
-package interfaces
+package service
 
 import (
 	"context"
@@ -7,30 +7,13 @@ import (
 
 	"github.com/PeterM45/perfolio-api/internal/common/model"
 	"github.com/PeterM45/perfolio-api/internal/platform/cache"
+	"github.com/PeterM45/perfolio-api/internal/user/interfaces"
 	"github.com/PeterM45/perfolio-api/internal/user/repository"
 	"github.com/PeterM45/perfolio-api/pkg/apperrors"
 	"github.com/PeterM45/perfolio-api/pkg/logger"
 	"github.com/PeterM45/perfolio-api/pkg/validator"
 	"golang.org/x/crypto/bcrypt"
 )
-
-// UserService defines methods for user business logic
-type UserService interface {
-	GetUserByID(ctx context.Context, id string) (*model.User, error)
-	GetUserByUsername(ctx context.Context, username string) (*model.User, error)
-	GetUserByEmail(ctx context.Context, email string) (*model.User, error)
-	CreateUser(ctx context.Context, req *model.CreateUserRequest) (*model.User, error)
-	UpdateUser(ctx context.Context, id string, req *model.UpdateUserRequest) (*model.User, error)
-	ChangePassword(ctx context.Context, id string, req *model.ChangePasswordRequest) error
-	VerifyPassword(ctx context.Context, id string, password string) (bool, error)
-	SearchUsers(ctx context.Context, query string, limit int) ([]*model.User, error)
-
-	ToggleFollow(ctx context.Context, req *model.FollowRequest, followerID string) error
-	IsFollowing(ctx context.Context, followerID, followingID string) (bool, error)
-	GetProfileStats(ctx context.Context, userID string) (*model.ProfileStatsResponse, error)
-	GetFollowers(ctx context.Context, userID string, limit, offset int) ([]*model.User, error)
-	GetFollowing(ctx context.Context, userID string, limit, offset int) ([]*model.User, error)
-}
 
 type userService struct {
 	repo      repository.UserRepository
@@ -40,7 +23,7 @@ type userService struct {
 }
 
 // NewUserService creates a new UserService
-func NewUserService(repo repository.UserRepository, cache cache.Cache, logger logger.Logger) UserService {
+func NewUserService(repo repository.UserRepository, cache cache.Cache, logger logger.Logger) interfaces.UserService {
 	return &userService{
 		repo:      repo,
 		cache:     cache,

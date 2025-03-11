@@ -5,25 +5,15 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/PeterM45/perfolio-api/internal/common/interfaces"
 	"github.com/PeterM45/perfolio-api/internal/common/model"
 	"github.com/PeterM45/perfolio-api/internal/platform/cache"
+	"github.com/PeterM45/perfolio-api/internal/user/interfaces"
 	"github.com/PeterM45/perfolio-api/internal/user/repository"
 	"github.com/PeterM45/perfolio-api/pkg/apperrors"
 	"github.com/PeterM45/perfolio-api/pkg/logger"
 	"github.com/PeterM45/perfolio-api/pkg/validator"
 	"github.com/google/uuid"
 )
-
-// WidgetService defines methods for widget business logic
-type WidgetService interface {
-	GetWidgetByID(ctx context.Context, id string) (*model.Widget, error)
-	GetUserWidgets(ctx context.Context, userID string) ([]*model.Widget, error)
-	CreateWidget(ctx context.Context, userID string, req *model.CreateWidgetRequest) (*model.Widget, error)
-	UpdateWidget(ctx context.Context, id string, userID string, req *model.UpdateWidgetRequest) (*model.Widget, error)
-	DeleteWidget(ctx context.Context, id string, userID string) error
-	BatchUpdateWidgets(ctx context.Context, userID string, req *model.BatchUpdateWidgetsRequest) error
-}
 
 type widgetService struct {
 	repo        repository.WidgetRepository
@@ -39,7 +29,7 @@ func NewWidgetService(
 	userService interfaces.UserService,
 	cache cache.Cache,
 	logger logger.Logger,
-) WidgetService {
+) interfaces.WidgetService {
 	return &widgetService{
 		repo:        repo,
 		userService: userService,

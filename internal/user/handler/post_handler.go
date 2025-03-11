@@ -6,7 +6,7 @@ import (
 	"strconv"
 
 	"github.com/PeterM45/perfolio-api/internal/common/model"
-	"github.com/PeterM45/perfolio-api/internal/user/service"
+	"github.com/PeterM45/perfolio-api/internal/user/interfaces"
 	"github.com/PeterM45/perfolio-api/pkg/apperrors"
 	"github.com/PeterM45/perfolio-api/pkg/logger"
 	"github.com/gin-gonic/gin"
@@ -14,12 +14,12 @@ import (
 
 // PostHandler handles HTTP requests for posts
 type PostHandler struct {
-	service service.PostService
+	service interfaces.PostService
 	logger  logger.Logger
 }
 
 // NewPostHandler creates a new PostHandler
-func NewPostHandler(service service.PostService, logger logger.Logger) *PostHandler {
+func NewPostHandler(service interfaces.PostService, logger logger.Logger) *PostHandler {
 	return &PostHandler{
 		service: service,
 		logger:  logger,
