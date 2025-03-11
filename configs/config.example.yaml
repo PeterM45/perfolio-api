@@ -22,7 +22,6 @@ database:
 
 # Authentication Configuration
 auth:
-  clerk_secret_key: '' # Get this from Clerk dashboard
   jwt_secret: '' # Strong random string for JWT signing
   token_expiry: 24h # JWT token expiry time
 

@@ -13,13 +13,23 @@ DB_PASSWORD ?= postgres
 DB_NAME ?= perfolio
 MIGRATION_PATH ?= ./scripts/migrations
 
-# Development setup
-setup:
+init-config:
+	@if [ ! -f configs/config.yaml ]; then \
+		echo "Creating config file from example..."; \
+		cp configs/config.example.yaml configs/config.yaml; \
+	else \
+		echo "Config file already exists. Use 'make force-init-config' to overwrite."; \
+	fi
+
+force-init-config:
+	@echo "Overwriting existing config with example..."
+	@cp configs/config.example.yaml configs/config.yaml
+
+setup: init-config
 	go mod download
 	go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
 	go install github.com/air-verse/air@latest
 	go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
-	cp configs/config.example.yaml configs/config.yaml
 
 # Run with hot reload
 dev:
