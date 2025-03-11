@@ -209,13 +209,13 @@ func (r *userRepository) GetByEmail(ctx context.Context, email string) (*model.U
 // Create adds a new user
 func (r *userRepository) Create(ctx context.Context, user *model.User) error {
 	query := `
-		INSERT INTO "users" (
-			id, email, username, first_name, last_name, bio,
-			auth_provider, image_url, is_active, created_at
-		) VALUES (
-			$1, $2, $3, $4, $5, $6, $7, $8, $9, $10
-		)
-	`
+        INSERT INTO "users" (
+            id, email, username, first_name, last_name, bio,
+            auth_provider, password_hash, image_url, is_active, created_at
+        ) VALUES (
+            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
+        )
+    `
 
 	now := time.Now().UTC()
 
@@ -246,6 +246,7 @@ func (r *userRepository) Create(ctx context.Context, user *model.User) error {
 		lastName,
 		bio,
 		string(user.AuthProvider),
+		user.PasswordHash, // Add password hash
 		imageURL,
 		user.IsActive,
 		now,
