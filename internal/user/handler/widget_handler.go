@@ -53,6 +53,7 @@ func (h *WidgetHandler) RegisterProtectedRoutes(router *gin.RouterGroup) {
 func (h *WidgetHandler) RegisterPublicRoutes(router *gin.RouterGroup) {
 	router.GET("/:id", h.GetWidget)
 	router.GET("/user/:userId", h.GetUserWidgets)
+	router.GET("/types", h.GetWidgetTypes) // Add this line
 }
 
 // GetWidget handles GET /widgets/:id
@@ -198,6 +199,17 @@ func (h *WidgetHandler) BatchUpdateWidgets(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"success": true})
+}
+
+// GetWidgetTypes handles GET /widgets/types
+func (h *WidgetHandler) GetWidgetTypes(c *gin.Context) {
+	types, err := h.service.GetWidgetTypes(c)
+	if err != nil {
+		h.handleError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"types": types})
 }
 
 // handleError handles errors and returns appropriate HTTP responses

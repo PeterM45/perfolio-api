@@ -42,4 +42,5 @@ type WidgetService interface {
 	UpdateWidget(ctx context.Context, id string, userID string, req *model.UpdateWidgetRequest) (*model.Widget, error)
 	DeleteWidget(ctx context.Context, id string, userID string) error
 	BatchUpdateWidgets(ctx context.Context, userID string, req *model.BatchUpdateWidgetsRequest) error
+	GetWidgetTypes(ctx context.Context) (map[string]model.WidgetType, error) // Add this line
 }

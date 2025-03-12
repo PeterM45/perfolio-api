@@ -9,7 +9,6 @@ import (
 	"github.com/PeterM45/perfolio-api/internal/common/model"
 	"github.com/PeterM45/perfolio-api/internal/platform/database"
 	"github.com/PeterM45/perfolio-api/pkg/apperrors"
-	"github.com/google/uuid"
 )
 
 // WidgetRepository defines methods to interact with widget data
@@ -37,15 +36,19 @@ func NewWidgetRepository(db *database.DB) WidgetRepository {
 func (r *widgetRepository) GetByID(ctx context.Context, id string) (*model.Widget, error) {
 	query := `
 		SELECT 
-			id, user_id, type, component, x, y, w, h, settings
+			id, user_id, type, component, x, y, w, h, settings, 
+			display_name, is_visible, version, created_at, updated_at, deleted_at
 		FROM 
 			widgets
 		WHERE 
 			id = $1
+			AND deleted_at IS NULL
 	`
 
 	var widget model.Widget
 	var settings sql.NullString
+	var displayName sql.NullString
+	var deletedAt sql.NullTime
 
 	err := r.db.QueryRowContext(ctx, query, id).Scan(
 		&widget.ID,
@@ -57,6 +60,12 @@ func (r *widgetRepository) GetByID(ctx context.Context, id string) (*model.Widge
 		&widget.W,
 		&widget.H,
 		&settings,
+		&displayName,
+		&widget.IsVisible,
+		&widget.Version,
+		&widget.CreatedAt,
+		&widget.UpdatedAt,
+		&deletedAt,
 	)
 
 	if err != nil {
@@ -70,6 +79,14 @@ func (r *widgetRepository) GetByID(ctx context.Context, id string) (*model.Widge
 		widget.Settings = &settings.String
 	}
 
+	if displayName.Valid {
+		widget.DisplayName = &displayName.String
+	}
+
+	if deletedAt.Valid {
+		widget.DeletedAt = &deletedAt.Time
+	}
+
 	return &widget, nil
 }
 
@@ -77,11 +94,13 @@ func (r *widgetRepository) GetByID(ctx context.Context, id string) (*model.Widge
 func (r *widgetRepository) GetByUserID(ctx context.Context, userID string) ([]*model.Widget, error) {
 	query := `
 		SELECT 
-			id, user_id, type, component, x, y, w, h, settings
+			id, user_id, type, component, x, y, w, h, settings,
+			display_name, is_visible, version, created_at, updated_at, deleted_at
 		FROM 
 			widgets
 		WHERE 
 			user_id = $1
+			AND (deleted_at IS NULL)
 		ORDER BY
 			y ASC, x ASC
 	`
@@ -97,6 +116,8 @@ func (r *widgetRepository) GetByUserID(ctx context.Context, userID string) ([]*m
 	for rows.Next() {
 		var widget model.Widget
 		var settings sql.NullString
+		var displayName sql.NullString
+		var deletedAt sql.NullTime
 
 		err := rows.Scan(
 			&widget.ID,
@@ -108,6 +129,12 @@ func (r *widgetRepository) GetByUserID(ctx context.Context, userID string) ([]*m
 			&widget.W,
 			&widget.H,
 			&settings,
+			&displayName,
+			&widget.IsVisible,
+			&widget.Version,
+			&widget.CreatedAt,
+			&widget.UpdatedAt,
+			&deletedAt,
 		)
 
 		if err != nil {
@@ -116,6 +143,14 @@ func (r *widgetRepository) GetByUserID(ctx context.Context, userID string) ([]*m
 
 		if settings.Valid {
 			widget.Settings = &settings.String
+		}
+
+		if displayName.Valid {
+			widget.DisplayName = &displayName.String
+		}
+
+		if deletedAt.Valid {
+			widget.DeletedAt = &deletedAt.Time
 		}
 
 		widgets = append(widgets, &widget)
@@ -130,21 +165,23 @@ func (r *widgetRepository) GetByUserID(ctx context.Context, userID string) ([]*m
 
 // Create adds a new widget
 func (r *widgetRepository) Create(ctx context.Context, widget *model.Widget) error {
-	if widget.ID == "" {
-		widget.ID = uuid.New().String()
-	}
-
 	query := `
 		INSERT INTO widgets (
-			id, user_id, type, component, x, y, w, h, settings
+			id, user_id, type, component, x, y, w, h, settings,
+			display_name, is_visible, version, created_at, updated_at
 		) VALUES (
-			$1, $2, $3, $4, $5, $6, $7, $8, $9
+			$1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW(), NOW()
 		)
 	`
 
 	var settingsSQL sql.NullString
 	if widget.Settings != nil {
 		settingsSQL = sql.NullString{String: *widget.Settings, Valid: true}
+	}
+
+	var displayNameSQL sql.NullString
+	if widget.DisplayName != nil {
+		displayNameSQL = sql.NullString{String: *widget.DisplayName, Valid: true}
 	}
 
 	_, err := r.db.ExecContext(ctx, query,
@@ -157,6 +194,9 @@ func (r *widgetRepository) Create(ctx context.Context, widget *model.Widget) err
 		widget.W,
 		widget.H,
 		settingsSQL,
+		displayNameSQL,
+		widget.IsVisible,
+		widget.Version,
 	)
 
 	if err != nil {
@@ -177,15 +217,27 @@ func (r *widgetRepository) Update(ctx context.Context, widget *model.Widget) err
 			y = $4, 
 			w = $5, 
 			h = $6, 
-			settings = $7
+			settings = $7,
+			display_name = $8,
+			is_visible = $9,
+			version = $10,
+			updated_at = NOW()
 		WHERE 
-			id = $8 AND user_id = $9
+			id = $11 
+			AND user_id = $12
+			AND version = $13
+			AND deleted_at IS NULL
 		RETURNING id
 	`
 
 	var settingsSQL sql.NullString
 	if widget.Settings != nil {
 		settingsSQL = sql.NullString{String: *widget.Settings, Valid: true}
+	}
+
+	var displayNameSQL sql.NullString
+	if widget.DisplayName != nil {
+		displayNameSQL = sql.NullString{String: *widget.DisplayName, Valid: true}
 	}
 
 	var id string
@@ -197,13 +249,23 @@ func (r *widgetRepository) Update(ctx context.Context, widget *model.Widget) err
 		widget.W,
 		widget.H,
 		settingsSQL,
+		displayNameSQL,
+		widget.IsVisible,
+		widget.Version,
 		widget.ID,
 		widget.UserID,
+		widget.Version-1, // Check against previous version
 	).Scan(&id)
 
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return apperrors.NotFound(fmt.Sprintf("widget: %s", widget.ID))
+			// Could be not found or version conflict
+			current, getErr := r.GetByID(ctx, widget.ID)
+			if getErr != nil {
+				return apperrors.NotFound(fmt.Sprintf("widget: %s", widget.ID))
+			}
+			return apperrors.Conflict(fmt.Sprintf("widget version conflict: current=%d, expected=%d",
+				current.Version, widget.Version-1))
 		}
 		return fmt.Errorf("update widget: %w", err)
 	}
@@ -213,7 +275,12 @@ func (r *widgetRepository) Update(ctx context.Context, widget *model.Widget) err
 
 // Delete removes a widget
 func (r *widgetRepository) Delete(ctx context.Context, id string) error {
-	query := `DELETE FROM widgets WHERE id = $1 RETURNING id`
+	query := `
+		UPDATE widgets
+		SET deleted_at = NOW()
+		WHERE id = $1 AND deleted_at IS NULL
+		RETURNING id
+	`
 
 	var deletedID string
 	err := r.db.QueryRowContext(ctx, query, id).Scan(&deletedID)
@@ -240,8 +307,8 @@ func (r *widgetRepository) BatchUpdatePositions(ctx context.Context, updates []*
 	// Prepare statement for repeated use
 	stmt, err := tx.PrepareContext(ctx, `
 		UPDATE widgets
-		SET x = $1, y = $2, w = $3, h = $4
-		WHERE id = $5 AND user_id = $6
+		SET x = $1, y = $2, w = $3, h = $4, version = version + 1, updated_at = NOW()
+		WHERE id = $5 AND user_id = $6 AND version = $7 AND deleted_at IS NULL
 		RETURNING id
 	`)
 
@@ -260,11 +327,18 @@ func (r *widgetRepository) BatchUpdatePositions(ctx context.Context, updates []*
 			update.H,
 			update.ID,
 			update.UserID,
+			update.Version,
 		).Scan(&id)
 
 		if err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
-				return apperrors.NotFound(fmt.Sprintf("widget: %s", update.ID))
+				// Check if it's a version conflict or not found
+				widget, getErr := r.GetByID(ctx, update.ID)
+				if getErr != nil {
+					return apperrors.NotFound(fmt.Sprintf("widget: %s", update.ID))
+				}
+				return apperrors.Conflict(fmt.Sprintf("widget version conflict for ID %s: current=%d, expected=%d",
+					update.ID, widget.Version, update.Version))
 			}
 			return fmt.Errorf("update widget position: %w", err)
 		}
