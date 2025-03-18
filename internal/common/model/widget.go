@@ -33,7 +33,7 @@ type WidgetType struct {
 	DefaultSize      WidgetSize             `json:"defaultSize"`
 	MinSize          WidgetSize             `json:"minSize"`
 	MaxSize          WidgetSize             `json:"maxSize"`
-	Schema           map[string]interface{} `json:"schema"`
+	FieldTypes       map[string]string      `json:"fieldTypes"`
 	DefaultSettings  map[string]interface{} `json:"defaultSettings"`
 	Customizations   []string               `json:"customizations"`
 }

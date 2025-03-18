@@ -24,7 +24,7 @@ func ValidateWidgetSettings(widgetType string, settings string) error {
 		return fmt.Errorf("invalid settings JSON: %w", err)
 	}
 
-	schemaLoader := gojsonschema.NewGoLoader(config.Schema)
+	schemaLoader := gojsonschema.NewGoLoader(config.FieldTypes)
 	documentLoader := gojsonschema.NewGoLoader(settingsObj)
 
 	result, err := gojsonschema.Validate(schemaLoader, documentLoader)

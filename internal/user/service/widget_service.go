@@ -145,7 +145,7 @@ func (s *widgetService) GetWidgetTypes(ctx context.Context) (map[string]model.Wi
 				W: config.MaxW,
 				H: config.MaxH,
 			},
-			Schema:          config.Schema,
+			FieldTypes:      config.FieldTypes,
 			DefaultSettings: config.DefaultSettings,
 			Customizations:  config.Customizations,
 		}

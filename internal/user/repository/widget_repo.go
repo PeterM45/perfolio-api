@@ -165,6 +165,7 @@ func (r *widgetRepository) GetByUserID(ctx context.Context, userID string) ([]*m
 
 // Create adds a new widget
 func (r *widgetRepository) Create(ctx context.Context, widget *model.Widget) error {
+
 	query := `
 		INSERT INTO widgets (
 			id, user_id, type, component, x, y, w, h, settings,
